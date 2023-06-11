@@ -1,15 +1,14 @@
 use std::{sync::{Arc, Mutex}};
 use std::env;
 mod service;
-use rocket::{routes, fs::NamedFile, get, catch, Config};
-use service::http::{routes as api,state};
-use crate::service::{modbus::{builder::server_build, store::Store}, http::state::AppState};
-use rocket::{Build, Rocket,  catchers};
+use rocket::{routes, fs::NamedFile, get, catch, Config, Responder};
+use serde::{Deserialize, Serialize};
+use service::http::{routes as api,state, types::{RequestRegister, RequestCoil}};
+use utoipa::{
+    openapi::{security::{ApiKey, ApiKeyValue, SecurityScheme}, schema}, OpenApi};
+use utoipa_swagger_ui::SwaggerUi;
+use crate::service::{modbus::{builder::server_build, store::Store}, http::{state::AppState, types::ApiDoc}};
 
-
-
-
-use std::path::{Path, PathBuf};
 
 #[tokio::main]
 
@@ -31,6 +30,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ = server_build(socket_addr,Arc::clone(&registry)) => unreachable!(),
         _ = rocket::custom(rocket_config)
         .manage(AppState::new(Arc::clone(&registry)))
+        .mount(
+            "/",
+            SwaggerUi::new("/api/v1/swagger/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
+        )
         .mount("/api/v1", routes![
             api::holding_registers_read,
             api::input_registers_read,
@@ -55,4 +58,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+
+
+
+
 
