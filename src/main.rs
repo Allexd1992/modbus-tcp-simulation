@@ -1,37 +1,54 @@
-use std::{
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{sync::{Arc, Mutex}};
+use std::env;
 mod service;
-use rocket::routes;
-use service::modbus::store;
-use tokio::net::TcpListener;
-use tokio_modbus::server::tcp::{accept_tcp_connection, Server};
+use rocket::{routes, fs::NamedFile, get, catch, Config};
 use service::http::{routes as api,state};
-use service::modbus::modbus_service::ModbusService;
+use crate::service::{modbus::{builder::server_build, store::Store}, http::state::AppState};
+use rocket::{Build, Rocket,  catchers};
 
-use crate::service::{modbus::{interfaces::IRegistry, store::Store}, http::state::AppState};
+
+
+
+use std::path::{Path, PathBuf};
 
 #[tokio::main]
 
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let registry = Arc::new(Mutex::new(Store::new()));
-    let socket_addr = "0.0.0.0:5502".parse().unwrap();
+    let port = env::var("MB_SERVER_PORT").unwrap_or_else(|_| "502".to_string()).parse::<u16>().unwrap();
+    let addr = format!("0.0.0.0:{}", port);
+
+    let web_port = env::var("WEB_SERVER_PORT").unwrap_or_else(|_| "8080".to_string()).parse::<u16>().unwrap();
+    let rocket_config = Config {
+        address: "0.0.0.0".parse()?,
+        port: web_port,
+        ..Default::default()
+    };
+
+    let socket_addr = addr.parse().unwrap();
 
     tokio::select! {
-        _ = server_context(socket_addr,Arc::clone(&registry)) => unreachable!(),
-        _ = rocket::build()
+        _ = server_build(socket_addr,Arc::clone(&registry)) => unreachable!(),
+        _ = rocket::custom(rocket_config)
         .manage(AppState::new(Arc::clone(&registry)))
-        .mount("/v1", routes![
-           // api::holding_registers_read,
-          //  api::input_registers_read,
-          //  api::discrete_coils_read,
-          //  api::discrete_input_read,
-          //  api::holding_registers_write,
-         //  api::input_registers_write,
-         //  api::discrete_coils_write,
+        .mount("/api/v1", routes![
+            api::holding_registers_read,
+            api::input_registers_read,
+            api::discrete_coils_read,
+            api::discrete_input_read,
+
+            api::holding_register_write,
+            api::input_register_write,
+            api::discrete_coil_write,
             api::discrete_input_write,
+
+            api::holding_registers_write,
+            api::input_registers_write,
+            api::discrete_coils_write,
+            api::discrete_inputs_write,
         ])
+
+  
         .launch()=>{},
         
     }
@@ -39,18 +56,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn server_context(socket_addr: SocketAddr, registry:Arc<Mutex<Store>>) -> anyhow::Result<()> {
-    println!("Starting up server on {socket_addr}");
-    let listener = TcpListener::bind(socket_addr).await?;
-    let server = Server::new(listener);
-    let new_service =
-        |_socket_addr: SocketAddr| Ok(Some(ModbusService::new(Arc::clone(&registry))));
-    let on_connected = |stream, socket_addr| async move {
-        accept_tcp_connection(stream, socket_addr, new_service)
-    };
-    let on_process_error = |err| {
-        eprintln!("{err}");
-    };
-    server.serve(&on_connected, on_process_error).await?;
-    Ok(())
-}
