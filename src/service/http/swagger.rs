@@ -1,32 +1,31 @@
-use rocket_okapi::swagger_ui::make_swagger_ui;
-use rocket_okapi::openapi;
-use rocket_okapi::routes::OpenApiFromRequest;
-use rocket_okapi::*;
-use rocket_okapi::request;
-use rocket::data::ByteUnit;
-use rocket::{State, post, get};
-use rocket::http::Status;
-use rocket::Data;
+use crate::service::http::{api as api};
+use utoipa::{OpenApi};
 
-#[openapi]
-#[get("/swagger.json")]
-fn openapi_spec() -> Result<Json<Swagger>, NotFound<String>> {
-    // Создайте спецификацию Swagger здесь, описывая ваше API
-    let spec = rocket_okapi::swagger::create_swagger_spec::<MyApiRoutes>();
-    Ok(Json(spec))
-}
+use super::types::{RequestRegister, RequestCoil};
 
-#[get("/")]
-fn index() -> impl Responder<'static> {
-    make_swagger_ui(&openapi_spec().unwrap().0, "/swagger.json")
-}
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        api::holding_registers_read,
+        api::input_registers_read,
+        api::discrete_coils_read,
+        api::discrete_input_read,
 
+        api::holding_register_write,
+        api::input_register_write,
+        api::discrete_coil_write,
+        api::discrete_input_write,
 
-struct MyApiRoutes;
-
-#[openapi]
-impl OpenApiFromRequest for MyApiRoutes {
-    fn path() -> rocket_okapi::schemars::schema::Path {
-        rocket_okapi::schemars::schema::Path::new("/")
-    }
-}
+        api::holding_registers_write,
+        api::input_registers_write,
+        api::discrete_coils_write,
+        api::discrete_inputs_write,
+    ),
+    components(
+        schemas(RequestCoil,RequestRegister)
+    ),
+    tags(
+        (name = "Modbus TCP Server Data Control", description = "Commands control list")
+    )
+)]
+pub struct ApiDoc;

@@ -1,13 +1,9 @@
 use std::{sync::{Arc, Mutex}};
 use std::env;
 mod service;
-use rocket::{routes, fs::NamedFile, get, catch, Config, Responder};
-use serde::{Deserialize, Serialize};
-use service::http::{routes as api,state, types::{RequestRegister, RequestCoil}};
-use utoipa::{
-    openapi::{security::{ApiKey, ApiKeyValue, SecurityScheme}, schema}, OpenApi};
-use utoipa_swagger_ui::SwaggerUi;
-use crate::service::{modbus::{builder::server_build, store::Store}, http::{state::AppState, types::ApiDoc}};
+use rocket::{ Config};
+use service::http::state;
+use crate::service::{modbus::{builder::server_build, store::Store}, http::{ context::get_rocket, api::Api}};
 
 
 #[tokio::main]
@@ -28,32 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::select! {
         _ = server_build(socket_addr,Arc::clone(&registry)) => unreachable!(),
-        _ = rocket::custom(rocket_config)
-        .manage(AppState::new(Arc::clone(&registry)))
-        .mount(
-            "/",
-            SwaggerUi::new("/api/v1/swagger/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
-        )
-        .mount("/api/v1", routes![
-            api::holding_registers_read,
-            api::input_registers_read,
-            api::discrete_coils_read,
-            api::discrete_input_read,
-
-            api::holding_register_write,
-            api::input_register_write,
-            api::discrete_coil_write,
-            api::discrete_input_write,
-
-            api::holding_registers_write,
-            api::input_registers_write,
-            api::discrete_coils_write,
-            api::discrete_inputs_write,
-        ])
-
-  
-        .launch()=>{},
-        
+        _ = get_rocket(rocket_config,Arc::clone(&registry),Api::new()).launch()=>{},
     }
 
     Ok(())

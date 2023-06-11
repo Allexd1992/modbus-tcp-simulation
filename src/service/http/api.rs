@@ -1,6 +1,6 @@
 
 use rocket::data::ByteUnit;
-use rocket::{State, post, get};
+use rocket::{State, post, get, routes, Route};
 use rocket::http::Status;
 use rocket::Data;
 use crate::service::http::types::{RequestRegister, RequestCoil};
@@ -89,9 +89,6 @@ pub fn discrete_input_read(addr: u16, cnt: u16, state: &State<AppState>) -> Resu
 }
 
 // single writing 
-
-
-
 
 /// Write Single Holding Register
 #[utoipa::path(
@@ -277,4 +274,29 @@ pub async fn discrete_inputs_write(addr: u16, values: Data<'_>, state: &State<Ap
     store.discrete_input_write(addr, &values.data).map_err(|_| Status::InternalServerError)?;
     println!("{:?}", values);
     Ok(())
+}
+
+pub struct Api{
+pub list:Vec<Route>
+}
+
+impl Api{
+    pub fn new()->Self{
+        let list = routes![
+            holding_registers_read,
+            input_registers_read,
+            discrete_coils_read,
+            discrete_input_read,
+    
+            holding_register_write,
+            input_register_write,
+            discrete_coil_write,
+            discrete_input_write,
+    
+            holding_registers_write,
+            input_registers_write,
+            discrete_coils_write,
+            discrete_inputs_write];
+        Self{list}
+    }
 }
