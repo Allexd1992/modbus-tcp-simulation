@@ -16,9 +16,6 @@ pub fn get_rocket(config:Config, registry:Arc<Mutex<Store>>,api:Api)->Rocket<Bui
         SwaggerUi::new("/api/v1/swagger/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
     )
     .mount("/api/v1",api.list)
-
-
-
 }
 
 
