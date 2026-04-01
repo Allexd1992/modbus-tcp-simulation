@@ -5,7 +5,7 @@ use rocket::http::Status;
 use rocket::Data;
 use crate::service::http::types::{RequestRegister, RequestCoil};
 use crate::service::modbus::interfaces::IRegistry;
-use crate::state::AppState;
+use crate::service::http::state::AppState;
 
 
 /// Read Holding registers
