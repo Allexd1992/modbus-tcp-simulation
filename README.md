@@ -1,6 +1,6 @@
 # Modbus TCP Server Simulator
 
-Rust-приложение, реализующее Modbus TCP сервер с REST API и Swagger документацией.
+Rust-приложение, реализующее Modbus TCP сервер с REST API, Swagger документацией и **MCP** (Model Context Protocol) по HTTP для подключения ИИ-клиентов (например Cursor).
 
 ## 🚀 Быстрый запуск
 
@@ -47,9 +47,13 @@ cargo build --release
 
 | Сервис | URL | Описание |
 |--------|-----|----------|
-| **Web API** | http://localhost:8082 | REST API для управления Modbus регистрами |
-| **Swagger UI** | http://localhost:8082/api/v1/swagger/ | Интерактивная документация API |
+| **Web API** | http://localhost:9090 | REST API для управления Modbus регистрами |
+| **Swagger UI** | http://localhost:9090/api/v1/swagger/ | Интерактивная документация API |
 | **Modbus TCP** | localhost:5021 | Modbus TCP сервер |
+| **MCP (HTTP)** | http://localhost:8081/mcp | Streamable HTTP, те же регистры/coils, что и у REST (см. ниже) |
+| **Веб-UI регистров** | http://localhost:9090/ui/ | Статическая страница: чтение/запись через REST (тот же store) |
+
+При локальном `cargo run` без Docker: Web API по умолчанию на **9090**, Modbus на **502**, MCP по умолчанию на **8081** — см. переменные окружения. UI: **`http://localhost:<WEB_SERVER_PORT>/ui/`**.
 
 ## 🔌 Подключение к Modbus TCP
 
@@ -103,7 +107,7 @@ client.readHoldingRegisters(0, 10)
 ### Доступ к Swagger UI:
 
 1. Откройте браузер
-2. Перейдите по адресу: **http://localhost:8082/api/v1/swagger/**
+2. Перейдите по адресу: **http://localhost:9090/api/v1/swagger/**
 3. Вы увидите интерактивную документацию API
 
 ### Основные разделы API:
@@ -156,12 +160,52 @@ client.readHoldingRegisters(0, 10)
    - Request body: `[100, 200, 300, 400, 500]`
 4. Нажмите "Execute"
 
+## 🤖 MCP (Model Context Protocol)
+
+Отдельный HTTP-сервер (Axum) с транспортом **Streamable HTTP** по пути **`/mcp`**. Доступ к данным тем же in-memory хранилищем, что и REST API: чтение/запись holding/input registers и discrete coils/inputs через **tools** (имена вида `modbus_read_holding_registers`, `modbus_write_holding_registers` и т.д.).
+
+### Адрес и переменная окружения
+
+| Параметр | Описание |
+|----------|----------|
+| **Базовый URL** | `http://<хост>:<MCP_SERVER_PORT>/mcp` |
+| **`MCP_SERVER_PORT`** | Порт MCP-сервера (по умолчанию **`8081`**). Значение **`0`** — MCP не поднимается. |
+
+В логах при старте будет строка с фактическим значением `MCP_SERVER_PORT`.
+
+### Подключение в Cursor
+
+В проекте или в пользовательских настройках добавьте MCP-сервер с типом **Streamable HTTP** и URL, например:
+
+`http://127.0.0.1:8081/mcp`
+
+Либо файл **`.cursor/mcp.json`** в корне репозитория:
+
+```json
+{
+  "mcpServers": {
+    "modbus-apcs": {
+      "url": "http://127.0.0.1:8081/mcp"
+    }
+  }
+}
+```
+
+После изменения конфигурации перезапустите Cursor. Сервер приложения при этом должен быть запущен, и порт MCP не должен совпадать с конфликтующими сервисами.
+
+### Docker
+
+В `docker-compose.yml` порт **8081** проброшен на хост; задайте при необходимости `MCP_SERVER_PORT` в `environment`.
+
+---
+
 ## 🛠️ Переменные окружения
 
 | Переменная | Значение по умолчанию | Описание |
 |------------|----------------------|----------|
-| `WEB_SERVER_PORT` | `8080` | Порт для Web API |
+| `WEB_SERVER_PORT` | `9090` | Порт для Web API, Swagger и `/ui` |
 | `MB_SERVER_PORT` | `502` | Порт для Modbus TCP |
+| `MCP_SERVER_PORT` | `8081` | Порт MCP (Streamable HTTP на `/mcp`); `0` — отключить MCP |
 | `RUST_LOG` | `info` | Уровень логирования |
 
 ## 📋 Команды управления
@@ -238,10 +282,11 @@ docker-compose ps -a
 ### Проблема: Порт уже занят
 ```bash
 # Проверьте, какие процессы используют порты
-netstat -ano | findstr :8082
+netstat -ano | findstr :9090
 netstat -ano | findstr :5021
+netstat -ano | findstr :8081
 
-# Остановите конфликтующие процессы или измените порты в docker-compose.yml
+# Остановите конфликтующие процессы или измените порты в docker-compose.yml и переменные WEB_SERVER_PORT / MB_SERVER_PORT / MCP_SERVER_PORT
 ```
 
 ### Проблема: Docker не найден

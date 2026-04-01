@@ -5,15 +5,17 @@ services:
     image: allexd2010/modbus-server-sim:1.0.0
     container_name: modbus-tcp-server
     ports:
-      - "8080:8080"  # Web API порт
+      - "9090:9090"  # Web API + UI + Swagger
       - "502:502"   # Modbus TCP порт
+      - "8081:8081"  # MCP (Streamable HTTP /mcp)
     environment:
-      - WEB_SERVER_PORT=8080
+      - WEB_SERVER_PORT=9090
       - MB_SERVER_PORT=502
+      - MCP_SERVER_PORT=8081
       - RUST_LOG=info
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/swagger/"]
+      test: ["CMD", "curl", "-f", "http://localhost:9090/api/v1/swagger/"]
       interval: 30s
       timeout: 10s
       retries: 3

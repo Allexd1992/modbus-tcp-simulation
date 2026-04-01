@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Modbus TCP Server Simulation</title>
+  <script>
+    (function () {
+      try {
+        var k = "apcs-ui-theme";
+        var s = localStorage.getItem(k);
+        if (s === "dark" || s === "light") {
+          document.documentElement.setAttribute("data-theme", s);
+        } else {
+          document.documentElement.setAttribute(
+            "data-theme",
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light"
+          );
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+  <div class="mfc-window">
+    <header class="mfc-titlebar">
+      <span class="mfc-title">Modbus TCP Server Simulation</span>
+      <div class="mfc-title-actions">
+        <button
+          type="button"
+          id="themeToggle"
+          class="theme-toggle"
+          title="Светлая / тёмная тема"
+          aria-label="Переключить тему"
+        >
+          <span class="theme-toggle-icon" aria-hidden="true"></span>
+        </button>
+        <div class="mcp-ai-wrap">
+          <button
+            type="button"
+            id="mcpAiBtn"
+            class="mcp-ai-btn"
+            aria-expanded="false"
+            aria-controls="mcpAiPanel"
+            title="MCP — доступ для ИИ"
+          >
+            <svg class="mcp-ai-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                fill="currentColor"
+                d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zm8.38 9.5a.75.75 0 01.372.648l-.117 1.005a.75.75 0 01-.648.648l-1.005.117a.75.75 0 01-.768-.768l.117-1.005a.75.75 0 01.648-.648l1.005-.117z"
+              />
+            </svg>
+            <span class="mcp-ai-label">AI</span>
+          </button>
+          <div
+            id="mcpAiPanel"
+            class="mcp-ai-panel"
+            role="dialog"
+            aria-labelledby="mcpAiHeading"
+            hidden
+          >
+            <div class="mcp-ai-panel-inner">
+              <h3 id="mcpAiHeading" class="mcp-ai-heading">MCP для ИИ</h3>
+              <p class="mcp-ai-lead">
+                <strong>Model Context Protocol</strong> — отдельный HTTP-сервис с тем же in-memory
+                хранилищем, что и REST: чтение/запись регистров и дискретов через
+                <strong>tools</strong> для клиентов вроде Cursor.
+              </p>
+              <ul class="mcp-ai-list">
+                <li>Транспорт: <strong>Streamable HTTP</strong>, путь <code>/mcp</code></li>
+                <li>
+                  URL по умолчанию:
+                  <code class="mcp-ai-code">http://&lt;хост&gt;:8081/mcp</code>
+                </li>
+                <li>Порт: переменная <code>MCP_SERVER_PORT</code> (по умолчанию <strong>8081</strong>); значение <strong>0</strong> — MCP отключён</li>
+                <li>Инструменты: <code>modbus_read_holding_registers</code>, <code>modbus_write_…</code> и др.</li>
+              </ul>
+              <p class="mcp-ai-foot">
+                В Cursor добавьте MCP-сервер типа Streamable HTTP с URL вашего хоста и порта MCP.
+              </p>
+              <button type="button" class="mcp-ai-close" id="mcpAiClose" aria-label="Закрыть">
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+        <a class="mfc-link" href="/api/v1/swagger/" target="_blank" rel="noopener">Swagger</a>
+      </div>
+    </header>
+
+    <div class="mfc-tabs" role="tablist" aria-label="Таблица Modbus">
+      <button type="button" class="mfc-tab active" data-kind="holding" role="tab" aria-selected="true" title="FC 03/16">
+        <span class="tab-num">4x</span> Holding registers
+      </button>
+      <button type="button" class="mfc-tab" data-kind="input" role="tab" title="FC 04">
+        <span class="tab-num">3x</span> Input registers
+      </button>
+      <button type="button" class="mfc-tab" data-kind="coil" role="tab" title="FC 01/05">
+        <span class="tab-num">0x</span> Coils
+      </button>
+      <button type="button" class="mfc-tab" data-kind="dinput" role="tab" title="FC 02">
+        <span class="tab-num">1x</span> Discrete inputs
+      </button>
+    </div>
+
+    <select id="kind" class="visually-hidden" aria-hidden="true" tabindex="-1">
+      <option value="holding" selected>Holding</option>
+      <option value="input">Input</option>
+      <option value="coil">Coil</option>
+      <option value="dinput">DInput</option>
+    </select>
+
+    <div class="mfc-toolbar">
+      <div class="tb-group">
+        <span class="tb-label">Сдвиг</span>
+        <input id="addr" type="number" min="0" max="65534" value="0" title="Сдвиг окна: стартовый адрес слова/бита (0-based, протокол)" />
+        <span class="tb-label">Количество</span>
+        <input id="cnt" type="number" min="1" max="256" value="16" title="Сколько слов/битов запросить; в таблице не более 10 строк" />
+        <button type="button" id="btnRead" class="mfc-btn mfc-btn-default">Обновить</button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group tb-poll-group">
+        <label class="tb-poll-label" title="Периодическое обновление таблицы">
+          <input type="checkbox" id="pollEnabled" checked />
+          <span>Авто</span>
+        </label>
+        <span class="tb-label">Интервал</span>
+        <input
+          id="pollIntervalSec"
+          type="number"
+          min="1"
+          max="300"
+          value="1"
+          step="1"
+          title="Секунды между автообновлениями"
+          aria-label="Интервал автообновления в секундах"
+        />
+        <span class="tb-poll-unit" aria-hidden="true">с</span>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group" id="regDisplayOpts">
+        <span class="tb-label">Формат</span>
+        <select id="displayMode" title="Декодирование слов">
+          <option value="uint16">UInt16</option>
+          <option value="int16">Int16</option>
+          <option value="bitmask">Битовая маска</option>
+          <option value="int32">Int32</option>
+          <option value="float32">Float</option>
+          <option value="float64">Double</option>
+        </select>
+        <span id="wordOrderWrap" class="tb-word-order-wrap">
+          <span class="tb-label">32 бит слова</span>
+          <select id="wordOrder32" title="Порядок 16-бит слов">
+            <option value="HL">HL</option>
+            <option value="LH">LH</option>
+          </select>
+        </span>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-group">
+        <button type="button" id="btnPrev" class="mfc-btn" title="Сдвиг окна назад">◀</button>
+        <button type="button" id="btnNext" class="mfc-btn" title="Сдвиг окна вперёд">▶</button>
+      </div>
+    </div>
+
+    <div class="mfc-grid-wrap">
+      <table id="grid" class="mfc-matrix" aria-label="Матрица регистров">
+        <thead id="gridHead">
+          <tr id="matrixHeaderRow"></tr>
+        </thead>
+        <tbody id="gridBody"></tbody>
+      </table>
+    </div>
+
+    <footer class="mfc-statusbar">
+      <span id="areaHint" class="status-part"></span>
+      <span class="status-sep">|</span>
+      <span id="msg" class="status-msg" role="status"></span>
+    </footer>
+  </div>
+
+  <script src="/ui/app.js"></script>
+</body>
+</html>
