@@ -5,7 +5,7 @@ COPY Cargo.toml /app
 COPY src/ /app/src/
 RUN cargo build --release 
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 ENV WEB_SERVER_PORT="8080"
 ENV MB_SERVER_PORT="502"
 COPY --from=builder /app/target/release/modbus_tcp_server_rust /usr/local/bin/modbus_tcp_server_rust
