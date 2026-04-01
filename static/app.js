@@ -385,10 +385,17 @@
       const r = await fetch(readPath(k, addr, cnt));
       if (!r.ok) throw new Error(r.status + " " + r.statusText);
       const data = await r.json();
+      if (!Array.isArray(data)) {
+        setMsg("Ответ API: нужен JSON-массив значений (проверьте URL и /api/v1)", "err");
+        tbody.innerHTML = "";
+        matrixRowsHint = "";
+        updateAreaHint();
+        return;
+      }
       lastRead = {
         kind: k,
         addr,
-        values: Array.isArray(data) ? data.map((x) => Number(x) & 0xffff) : [],
+        values: data.map((x) => Number(x) & 0xffff),
         bools: [],
       };
       if (isBoolKind(k)) {
@@ -994,15 +1001,126 @@
     });
   }
 
+  /** Порт MCP на стороне браузера: ?mcpPort=8081 или по умолчанию 18081 (Docker 18081:8081). */
+  function getMcpPublicPort() {
+    try {
+      const q = new URLSearchParams(window.location.search).get("mcpPort");
+      if (q !== null && /^\d{1,5}$/.test(q)) {
+        const n = Number(q);
+        if (n >= 0 && n <= 65535) return String(n);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return "18081";
+  }
+
+  function getMcpPublicHost() {
+    const h = window.location.hostname;
+    return h && h.length > 0 ? h : "127.0.0.1";
+  }
+
+  function getMcpUrlForConfig() {
+    return (
+      "http://" + getMcpPublicHost() + ":" + getMcpPublicPort() + "/mcp"
+    );
+  }
+
+  function formatMcpJsonExample() {
+    return JSON.stringify(
+      { mcpServers: { "modbus-tcp-sim": { url: getMcpUrlForConfig() } } },
+      null,
+      2
+    );
+  }
+
+  function refreshMcpCursorConfigPreview() {
+    const el = document.getElementById("mcpCursorConfigCode");
+    if (el) {
+      el.textContent = formatMcpJsonExample();
+    }
+  }
+
+  function updateMcpUrlLine() {
+    const el = document.getElementById("mcpAiUrlLine");
+    if (!el) return;
+    const u = getMcpUrlForConfig();
+    const p = getMcpPublicPort();
+    const safe = u.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    el.innerHTML =
+      "Текущий URL для Cursor: <code class=\"mcp-ai-code\">" +
+      safe +
+      "</code> · хост как у этой страницы (<code>" +
+      getMcpPublicHost().replace(/</g, "&lt;") +
+      "</code>), порт <strong>" +
+      p +
+      "</strong> — из <code>?mcpPort=…</code> или <strong>18081</strong> по умолчанию.";
+  }
+
   const mcpAiBtn = document.getElementById("mcpAiBtn");
   const mcpAiPanel = document.getElementById("mcpAiPanel");
   const mcpAiClose = document.getElementById("mcpAiClose");
+  const mcpConfigDownload = document.getElementById("mcpConfigDownload");
+  const mcpCursorConfigCode = document.getElementById("mcpCursorConfigCode");
   const mcpAiWrap = mcpAiBtn ? mcpAiBtn.closest(".mcp-ai-wrap") : null;
+
+  let mcpPanelPosRaf = null;
+
+  /* Вынести панель из .mfc-window: иначе backdrop-filter у предка ломает position:fixed (обрезка). */
+  if (mcpAiPanel && mcpAiPanel.parentNode) {
+    document.body.appendChild(mcpAiPanel);
+  }
+
+  function viewportHeight() {
+    if (window.visualViewport && window.visualViewport.height) {
+      return window.visualViewport.height;
+    }
+    return window.innerHeight;
+  }
+
+  /** fixed относительно окна просмотра; координаты от кнопки AI */
+  function syncMcpPanelPosition() {
+    if (!mcpAiPanel || !mcpAiBtn || mcpAiPanel.hidden) return;
+    const br = mcpAiBtn.getBoundingClientRect();
+    const gap = 8;
+    const pad = 12;
+    mcpAiPanel.style.position = "fixed";
+    mcpAiPanel.style.left = "auto";
+    mcpAiPanel.style.right =
+      Math.max(pad, document.documentElement.clientWidth - br.right) + "px";
+    const top = br.bottom + gap;
+    mcpAiPanel.style.top = top + "px";
+    const vh = viewportHeight();
+    const available = vh - top - pad;
+    mcpAiPanel.style.maxHeight = Math.max(240, available) + "px";
+  }
+
+  function scheduleMcpPanelPosition() {
+    if (!mcpAiPanel || mcpAiPanel.hidden) return;
+    if (mcpPanelPosRaf !== null) {
+      cancelAnimationFrame(mcpPanelPosRaf);
+    }
+    mcpPanelPosRaf = requestAnimationFrame(() => {
+      mcpPanelPosRaf = null;
+      syncMcpPanelPosition();
+    });
+  }
+
+  refreshMcpCursorConfigPreview();
+  updateMcpUrlLine();
 
   function setMcpPanelOpen(open) {
     if (!mcpAiPanel || !mcpAiBtn) return;
     mcpAiPanel.hidden = !open;
     mcpAiBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      refreshMcpCursorConfigPreview();
+      updateMcpUrlLine();
+      requestAnimationFrame(() => {
+        syncMcpPanelPosition();
+        requestAnimationFrame(syncMcpPanelPosition);
+      });
+    }
   }
 
   function closeMcpPanel() {
@@ -1017,6 +1135,24 @@
     if (mcpAiClose) {
       mcpAiClose.addEventListener("click", () => closeMcpPanel());
     }
+    if (mcpConfigDownload && mcpCursorConfigCode) {
+      mcpConfigDownload.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const text = mcpCursorConfigCode.textContent || "";
+        const blob = new Blob([text], {
+          type: "application/json;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "mcp.json";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+    }
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !mcpAiPanel.hidden) {
         closeMcpPanel();
@@ -1024,9 +1160,15 @@
     });
     document.addEventListener("click", (e) => {
       if (mcpAiPanel.hidden) return;
-      if (!mcpAiWrap.contains(e.target)) {
-        closeMcpPanel();
-      }
+      const t = e.target;
+      if (mcpAiWrap.contains(t) || mcpAiPanel.contains(t)) return;
+      closeMcpPanel();
     });
+    window.addEventListener("resize", scheduleMcpPanelPosition);
+    window.addEventListener("scroll", scheduleMcpPanelPosition, true);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", scheduleMcpPanelPosition);
+      window.visualViewport.addEventListener("scroll", scheduleMcpPanelPosition);
+    }
   }
 })();
