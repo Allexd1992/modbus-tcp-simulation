@@ -22,7 +22,7 @@ use crate::service::http::state::AppState;
 )]
 #[get("/holding-registers/<addr>/<cnt>")]
 pub fn holding_registers_read(addr: u16, cnt: u16, state: &State<AppState>) -> Result<String, Status> {
-    let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
+    let store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     let data = store.holding_registers_read(addr, cnt).unwrap();
     Ok(serde_json::to_string_pretty(&data).unwrap())
 }
@@ -40,7 +40,7 @@ pub fn holding_registers_read(addr: u16, cnt: u16, state: &State<AppState>) -> R
 )]
 #[get("/input-registers/<addr>/<cnt>")]
 pub fn input_registers_read(addr: u16, cnt: u16, state: &State<AppState>) -> Result<String, Status> {
-    let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
+    let store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     let data = store.input_registers_read(addr, cnt).unwrap();
     Ok(serde_json::to_string_pretty(&data).unwrap())
 }
@@ -61,7 +61,7 @@ pub fn input_registers_read(addr: u16, cnt: u16, state: &State<AppState>) -> Res
 #[get("/discrete-coils/<addr>/<cnt>")]
 pub fn discrete_coils_read(addr: u16, cnt: u16, state: &State<AppState>) -> Result<String, Status> {
     // Ваш код чтения discrete coils
-    let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
+    let store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     let data = store.discrete_coils_read(addr, cnt).unwrap();
     Ok(serde_json::to_string_pretty(&data).unwrap())
 }
@@ -83,7 +83,7 @@ pub fn discrete_coils_read(addr: u16, cnt: u16, state: &State<AppState>) -> Resu
 #[get("/discrete-inputs/<addr>/<cnt>")]
 pub fn discrete_input_read(addr: u16, cnt: u16, state: &State<AppState>) -> Result<String, Status> {
     // Ваш код чтения discrete input
-    let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
+    let store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     let data = store.discrete_input_read(addr, cnt).unwrap();
     Ok(serde_json::to_string_pretty(&data).unwrap())
 }

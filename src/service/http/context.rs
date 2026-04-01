@@ -1,5 +1,6 @@
 use std::{sync::{Arc, Mutex}};
 use rocket::{Config, Rocket, Build};
+use rocket::fs::{relative, FileServer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use crate::service::{modbus::{ store::Store}, http::{state::AppState, swagger::ApiDoc}};
@@ -15,6 +16,7 @@ pub fn get_rocket(config:Config, registry:Arc<Mutex<Store>>,api:Api)->Rocket<Bui
         "/",
         SwaggerUi::new("/api/v1/swagger/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
     )
+    .mount("/ui", FileServer::from(relative!("static")))
     .mount("/api/v1",api.list)
 }
 

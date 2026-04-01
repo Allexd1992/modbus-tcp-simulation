@@ -14,8 +14,8 @@ docker-compose ps
 
 | Сервис | URL | Описание |
 |--------|-----|----------|
-| **Swagger UI** | http://localhost:8080/api/v1/swagger/ | 📖 Интерактивная документация API |
-| **Web API** | http://localhost:8080 | 🔧 REST API для управления регистрами |
+| **Swagger UI** | http://localhost:9090/api/v1/swagger/ | 📖 Интерактивная документация API |
+| **Web API** | http://localhost:9090 | 🔧 REST API для управления регистрами |
 | **Modbus TCP** | localhost:502 | 🔌 Modbus TCP сервер |
 
 ## 🔌 Быстрое подключение к Modbus
@@ -48,7 +48,7 @@ client.readHoldingRegisters(0, 10)
 
 ## 📖 Использование Swagger UI
 
-1. **Откройте браузер**: http://localhost:8080/api/v1/swagger/
+1. **Откройте браузер**: http://localhost:9090/api/v1/swagger/
 2. **Выберите endpoint** (например, `GET /api/v1/holding-registers/{addr}/{cnt}`)
 3. **Нажмите "Try it out"**
 4. **Введите параметры**:
@@ -78,7 +78,7 @@ docker-compose ps
 ### Порт занят?
 ```bash
 # Проверьте занятые порты
-netstat -ano | findstr :8080
+netstat -ano | findstr :9090
 netstat -ano | findstr :502
 
 # Измените порты в docker-compose.yml
@@ -97,5 +97,5 @@ $env:PATH += ";C:\Program Files\Docker\Docker\resources\bin"
 ---
 
 **🎯 Готово!** Ваш Modbus TCP сервер работает на:
-- **Swagger UI**: http://localhost:8080/api/v1/swagger/
+- **Swagger UI**: http://localhost:9090/api/v1/swagger/
 - **Modbus TCP**: localhost:502 

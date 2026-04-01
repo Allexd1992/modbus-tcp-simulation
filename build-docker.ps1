@@ -19,7 +19,7 @@ docker build -t allexd2010/modbus-server-sim:1.0.0 .
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ Образ успешно собран!" -ForegroundColor Green
     Write-Host "🐳 Для запуска используйте:" -ForegroundColor Cyan
-    Write-Host "   docker run -p 8080:8080 -p 502:502 allexd2010/modbus-server-sim:1.0.0" -ForegroundColor White
+    Write-Host "   docker run -p 9090:9090 -p 502:502 -p 8081:8081 allexd2010/modbus-server-sim:1.0.0" -ForegroundColor White
 } else {
     Write-Host "❌ Ошибка при сборке образа!" -ForegroundColor Red
     exit 1

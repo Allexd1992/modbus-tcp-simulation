@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = env::var("MB_SERVER_PORT").unwrap_or_else(|_| "502".to_string()).parse::<u16>().unwrap();
     let addr = format!("0.0.0.0:{}", port);
 
-    let web_port = env::var("WEB_SERVER_PORT").unwrap_or_else(|_| "8080".to_string()).parse::<u16>().unwrap();
+    let web_port = env::var("WEB_SERVER_PORT").unwrap_or_else(|_| "9090".to_string()).parse::<u16>().unwrap();
     let rocket_config = Config {
         address: "0.0.0.0".parse()?,
         port: web_port,
