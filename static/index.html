@@ -72,19 +72,36 @@
               </p>
               <ul class="mcp-ai-list">
                 <li>Транспорт: <strong>Streamable HTTP</strong>, путь <code>/mcp</code></li>
-                <li>
-                  URL по умолчанию:
-                  <code class="mcp-ai-code">http://&lt;хост&gt;:8081/mcp</code>
+                <li id="mcpAiUrlLine">
+                  Подсказка URL подставляется из адреса этой страницы…
                 </li>
-                <li>Порт: переменная <code>MCP_SERVER_PORT</code> (по умолчанию <strong>8081</strong>); значение <strong>0</strong> — MCP отключён</li>
-                <li>Инструменты: <code>modbus_read_holding_registers</code>, <code>modbus_write_…</code> и др.</li>
+                <li>
+                  Внутри контейнера MCP слушает <strong>8081</strong>; с хоста при пробросе
+                  <code>18081:8081</code> порт по умолчанию в примере ниже — <strong>18081</strong>. Иной порт:
+                  добавьте в URL UI параметр <code>?mcpPort=8081</code> (нативный запуск без Docker).
+                </li>
+                <li>Переменная окружения <code>MCP_SERVER_PORT</code> (в процессе по умолчанию <strong>8081</strong>); <strong>0</strong> — MCP выключен</li>
+                <li>
+                  В tools адрес регистра — <strong>смещение по протоколу</strong> (0-based): <strong>40001 → addr 0</strong>,
+                  <strong>40021 → addr 20</strong>.
+                </li>
+                <li>Инструменты: <code>modbus_read_holding_registers</code>, <code>modbus_write_holding_registers</code> и др.</li>
               </ul>
-              <p class="mcp-ai-foot">
-                В Cursor добавьте MCP-сервер типа Streamable HTTP с URL вашего хоста и порта MCP.
+              <p class="mcp-ai-config-title">Пример конфигурации Cursor</p>
+              <p class="mcp-ai-config-hint">
+                Файл <code>mcp.json</code>: в каталоге проекта <code>.cursor/mcp.json</code> или глобально
+                <code>%USERPROFILE%\.cursor\mcp.json</code> (Windows). После изменения — полный перезапуск Cursor.
+                Хост и порт в примере берутся из адреса этой страницы (и <code>?mcpPort=</code>).
               </p>
-              <button type="button" class="mcp-ai-close" id="mcpAiClose" aria-label="Закрыть">
-                Закрыть
-              </button>
+              <pre class="mcp-ai-pre" id="mcpCursorConfig" aria-label="Пример mcp.json для Cursor"><code id="mcpCursorConfigCode">{}</code></pre>
+              <div class="mcp-ai-panel-actions">
+                <button type="button" class="mcp-ai-dl" id="mcpConfigDownload">
+                  Скачать mcp.json
+                </button>
+                <button type="button" class="mcp-ai-close" id="mcpAiClose" aria-label="Закрыть">
+                  Закрыть
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -237,6 +237,9 @@ body {
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), var(--glass-inset);
   overflow: hidden;
+  /* заполняем экран по высоте — ниже контент не «висит» в пустоте */
+  min-height: calc(100vh - 56px);
+  box-sizing: border-box;
 }
 
 /* Liquid Glass: главное окно — спекулярный верх, хроматический отлив */
@@ -489,14 +492,19 @@ html[data-theme="dark"] .theme-toggle-icon::before {
   line-height: 1;
 }
 
+/*
+ * Панель переносится в document.body (см. app.js): иначе backdrop-filter у .mfc-window
+ * создаёт новый containing block и режет position:fixed внутри окна.
+ */
 .mcp-ai-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 10000;
-  width: min(360px, calc(100vw - 32px));
-  max-height: min(70vh, 420px);
-  overflow: auto;
+  position: fixed;
+  z-index: 2147483646;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(85vh, calc(100vh - 24px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 0;
   margin: 0;
   border-radius: var(--radius-lg);
@@ -513,7 +521,8 @@ html[data-theme="dark"] .theme-toggle-icon::before {
 }
 
 .mcp-ai-panel-inner {
-  padding: 14px 16px 16px;
+  padding: 14px 16px 20px;
+  box-sizing: border-box;
 }
 
 .mcp-ai-heading {
@@ -564,6 +573,79 @@ html[data-theme="dark"] .theme-toggle-icon::before {
   line-height: 1.45;
   color: var(--text-muted, var(--text-secondary));
   opacity: 0.95;
+}
+
+.mcp-ai-config-title {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mcp-ai-config-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.mcp-ai-pre {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  border: 1px solid var(--glass-border-subtle);
+  overflow-x: auto;
+  font: 11px/1.45 var(--mono);
+  color: var(--text);
+}
+
+.mcp-ai-pre code {
+  font: inherit;
+  white-space: pre;
+  word-break: normal;
+}
+
+.mcp-ai-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.mcp-ai-dl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(52, 199, 89, 0.35);
+  background: rgba(52, 199, 89, 0.12);
+  color: var(--ok);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.mcp-ai-dl:hover {
+  background: rgba(52, 199, 89, 0.2);
+}
+
+.mcp-ai-dl:active {
+  transform: scale(0.98);
+}
+
+html[data-theme="dark"] .mcp-ai-dl {
+  border-color: rgba(125, 216, 125, 0.4);
+  background: rgba(125, 216, 125, 0.1);
+  color: #7dd87d;
+}
+
+html[data-theme="dark"] .mcp-ai-dl:hover {
+  background: rgba(125, 216, 125, 0.18);
 }
 
 .mcp-ai-close {
