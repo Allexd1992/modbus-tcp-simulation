@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  modbus-server:
+    image: allexd2010/modbus-server-sim:1.0.0
+    container_name: modbus-tcp-server
+    ports:
+      - "8080:8080"  # Web API порт
+      - "502:502"   # Modbus TCP порт
+    environment:
+      - WEB_SERVER_PORT=8080
+      - MB_SERVER_PORT=502
+      - RUST_LOG=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/swagger/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - modbus-network
+
+networks:
+  modbus-network:
+    driver: bridge 

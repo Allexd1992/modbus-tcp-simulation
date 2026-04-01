@@ -1,92 +1,281 @@
-# APCS Integration
+# Modbus TCP Server Simulator
 
+Rust-приложение, реализующее Modbus TCP сервер с REST API и Swagger документацией.
 
+## 🚀 Быстрый запуск
 
-## Getting started
+### Вариант 1: Docker Compose (рекомендуется)
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+```bash
+# Запуск из Docker Hub
+docker-compose up -d
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin http://mygitlab.space/sld-iot/projects/sibur/apcs-integration.git
-git branch -M main
-git push -uf origin main
+# Или с локальной сборкой для разработки
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-## Integrate with your tools
+### Вариант 2: Локальная сборка
 
-- [ ] [Set up project integrations](http://mygitlab.space/sld-iot/projects/sibur/apcs-integration/-/settings/integrations)
+```bash
+# Сборка и запуск
+cargo run
 
-## Collaborate with your team
+# Или сборка релиза
+cargo build --release
+./target/release/modbus_tcp_server_rust
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### Вариант 3: PowerShell скрипт
 
-## Test and Deploy
+```powershell
+# Запуск из Docker Hub
+.\docker-compose.ps1 start
 
-Use the built-in continuous integration in GitLab.
+# Запуск в режиме разработки
+.\docker-compose.ps1 dev
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+# Остановка
+.\docker-compose.ps1 stop
 
-***
+# Просмотр логов
+.\docker-compose.ps1 logs
+```
 
-# Editing this README
+## 📊 Доступные сервисы
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+После запуска доступны следующие сервисы:
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| **Web API** | http://localhost:8082 | REST API для управления Modbus регистрами |
+| **Swagger UI** | http://localhost:8082/api/v1/swagger/ | Интерактивная документация API |
+| **Modbus TCP** | localhost:5021 | Modbus TCP сервер |
 
-## Name
-Choose a self-explaining name for your project.
+## 🔌 Подключение к Modbus TCP
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Параметры подключения:
+- **IP адрес**: `localhost` или `127.0.0.1`
+- **Порт**: `5021` (или `502` при локальном запуске)
+- **Unit ID**: `1` (по умолчанию)
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+### Пример подключения с помощью Python:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```python
+from pymodbus.client import ModbusTcpClient
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+# Подключение к серверу
+client = ModbusTcpClient('localhost', 5021)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+if client.connect():
+    print("✅ Подключение успешно!")
+    
+    # Чтение holding registers
+    result = client.read_holding_registers(0, 10)
+    print(f"Holding registers: {result.registers}")
+    
+    # Запись в holding register
+    client.write_register(0, 12345)
+    
+    client.close()
+else:
+    print("❌ Ошибка подключения!")
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Пример подключения с помощью Node.js:
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```javascript
+const ModbusRTU = require('modbus-serial');
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+const client = new ModbusRTU();
+client.connectTCP("localhost", { port: 5021 });
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+client.readHoldingRegisters(0, 10)
+    .then(data => {
+        console.log("Holding registers:", data.data);
+    })
+    .catch(err => {
+        console.error("Ошибка:", err);
+    });
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## 📖 Swagger UI - Интерактивная документация
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Доступ к Swagger UI:
 
-## License
-For open source projects, say how it is licensed.
+1. Откройте браузер
+2. Перейдите по адресу: **http://localhost:8082/api/v1/swagger/**
+3. Вы увидите интерактивную документацию API
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+### Основные разделы API:
+
+#### 🔧 Управление Holding Registers
+- `GET /api/v1/holding-registers/{addr}/{cnt}` - Чтение регистров хранения
+- `POST /api/v1/holding-register/{addr}/{data}` - Запись в регистр хранения
+- `POST /api/v1/holding-registers/{addr}` - Запись нескольких регистров
+
+#### 📊 Управление Input Registers
+- `GET /api/v1/input-registers/{addr}/{cnt}` - Чтение входных регистров
+- `POST /api/v1/input-register/{addr}/{data}` - Запись в входной регистр
+- `POST /api/v1/input-registers/{addr}` - Запись нескольких входных регистров
+
+#### ⚡ Управление Discrete Coils
+- `GET /api/v1/discrete-coils/{addr}/{cnt}` - Чтение дискретных катушек
+- `POST /api/v1/discrete-coil/{addr}/{data}` - Запись в дискретную катушку
+- `POST /api/v1/discrete-coils/{addr}` - Запись нескольких катушек
+
+#### 🔌 Управление Discrete Inputs
+- `GET /api/v1/discrete-inputs/{addr}/{cnt}` - Чтение дискретных входов
+- `POST /api/v1/discrete-input/{addr}/{data}` - Запись в дискретный вход
+- `POST /api/v1/discrete-inputs/{addr}` - Запись нескольких дискретных входов
+
+### Примеры использования Swagger UI:
+
+#### 1. Чтение Holding Registers
+1. Найдите endpoint `GET /api/v1/holding-registers/{addr}/{cnt}`
+2. Нажмите "Try it out"
+3. Введите параметры:
+   - `addr`: `0` (начальный адрес)
+   - `cnt`: `10` (количество регистров)
+4. Нажмите "Execute"
+5. Получите результат в формате JSON
+
+#### 2. Запись в Holding Register
+1. Найдите endpoint `POST /api/v1/holding-register/{addr}/{data}`
+2. Нажмите "Try it out"
+3. Введите параметры:
+   - `addr`: `0` (адрес регистра)
+   - `data`: `12345` (значение для записи)
+4. Нажмите "Execute"
+5. Получите подтверждение записи
+
+#### 3. Запись нескольких регистров
+1. Найдите endpoint `POST /api/v1/holding-registers/{addr}`
+2. Нажмите "Try it out"
+3. Введите параметры:
+   - `addr`: `0` (начальный адрес)
+   - Request body: `[100, 200, 300, 400, 500]`
+4. Нажмите "Execute"
+
+## 🛠️ Переменные окружения
+
+| Переменная | Значение по умолчанию | Описание |
+|------------|----------------------|----------|
+| `WEB_SERVER_PORT` | `8080` | Порт для Web API |
+| `MB_SERVER_PORT` | `502` | Порт для Modbus TCP |
+| `RUST_LOG` | `info` | Уровень логирования |
+
+## 📋 Команды управления
+
+### Docker Compose команды:
+
+```bash
+# Запуск
+docker-compose up -d
+
+# Остановка
+docker-compose down
+
+# Просмотр логов
+docker-compose logs -f
+
+# Статус сервисов
+docker-compose ps
+
+# Перезапуск
+docker-compose restart
+```
+
+### PowerShell скрипт команды:
+
+```powershell
+# Запуск из Docker Hub
+.\docker-compose.ps1 start
+
+# Запуск в режиме разработки
+.\docker-compose.ps1 dev
+
+# Остановка
+.\docker-compose.ps1 stop
+
+# Просмотр логов
+.\docker-compose.ps1 logs
+
+# Статус
+.\docker-compose.ps1 status
+
+# Сборка и загрузка образа
+.\docker-compose.ps1 build
+```
+
+## 🔍 Мониторинг и отладка
+
+### Просмотр логов:
+```bash
+# Docker Compose логи
+docker-compose logs -f
+
+# Логи конкретного контейнера
+docker logs modbus-tcp-server
+
+# PowerShell скрипт
+.\docker-compose.ps1 logs
+```
+
+### Проверка статуса:
+```bash
+# Статус контейнеров
+docker-compose ps
+
+# Детальная информация
+docker-compose ps -a
+```
+
+### Health Check:
+Сервис автоматически проверяет доступность Swagger UI каждые 30 секунд.
+
+## 🐛 Устранение неполадок
+
+### Проблема: Порт уже занят
+```bash
+# Проверьте, какие процессы используют порты
+netstat -ano | findstr :8082
+netstat -ano | findstr :5021
+
+# Остановите конфликтующие процессы или измените порты в docker-compose.yml
+```
+
+### Проблема: Docker не найден
+```powershell
+# Добавьте Docker в PATH
+$env:PATH += ";C:\Program Files\Docker\Docker\resources\bin"
+```
+
+### Проблема: Контейнер не запускается
+```bash
+# Проверьте логи
+docker-compose logs
+
+# Запустите в интерактивном режиме
+docker-compose up
+```
+
+## 📚 Дополнительные ресурсы
+
+- **Docker Hub**: https://hub.docker.com/r/allexd2010/modbus-server-sim
+- **GitHub**: [Репозиторий проекта]
+- **Modbus Protocol**: https://modbus.org/
+- **Swagger Documentation**: https://swagger.io/
+
+## 🤝 Поддержка
+
+При возникновении проблем:
+1. Проверьте логи: `.\docker-compose.ps1 logs`
+2. Убедитесь, что порты не заняты
+3. Проверьте, что Docker запущен
+4. Создайте issue в репозитории проекта
+
+---
+
+**Версия**: 1.0.0  
+**Автор**: allexd2010  
+**Лицензия**: MIT
