@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
-  <title>Modbus TCP Server Simulation</title>
+  <meta name="theme-color" content="#16213e" />
+  <meta name="application-name" content="Modbus Sim" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Modbus Sim" />
+  <title data-i18n="app.title">Modbus TCP Server Simulation</title>
+  <link rel="manifest" href="/ui/manifest.json" />
+  <link rel="icon" href="/ui/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/ui/icons/icon.svg" />
   <script>
     (function () {
       try {
@@ -21,6 +29,16 @@
           );
         }
       } catch (e) {}
+      try {
+        var lk = "apcs-ui-lang";
+        var ls = localStorage.getItem(lk);
+        document.documentElement.setAttribute(
+          "lang",
+          ls === "ru" || ls === "en" ? ls : "en"
+        );
+      } catch (e2) {
+        document.documentElement.setAttribute("lang", "en");
+      }
     })();
   </script>
   <link rel="stylesheet" href="/ui/style.css" />
@@ -28,14 +46,24 @@
 <body>
   <div class="mfc-window">
     <header class="mfc-titlebar">
-      <span class="mfc-title">Modbus TCP Server Simulation</span>
+      <span class="mfc-title" data-i18n="app.title">Modbus TCP Server Simulation</span>
       <div class="mfc-title-actions">
+        <div
+          class="lang-switch"
+          role="group"
+          data-i18n-attr="aria-label:lang.switch"
+          aria-label="Language"
+        >
+          <button type="button" class="lang-btn" data-lang="en" id="langEn">EN</button>
+          <button type="button" class="lang-btn" data-lang="ru" id="langRu">RU</button>
+        </div>
         <button
           type="button"
           id="themeToggle"
           class="theme-toggle"
-          title="Светлая / тёмная тема"
-          aria-label="Переключить тему"
+          data-i18n-attr="title:theme.title;aria-label:theme.aria"
+          title="Light / dark theme"
+          aria-label="Toggle theme"
         >
           <span class="theme-toggle-icon" aria-hidden="true"></span>
         </button>
@@ -46,7 +74,8 @@
             class="mcp-ai-btn"
             aria-expanded="false"
             aria-controls="mcpAiPanel"
-            title="MCP — доступ для ИИ"
+            data-i18n-attr="title:mcpAi.title"
+            title="MCP — AI access"
           >
             <svg class="mcp-ai-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path
@@ -64,63 +93,44 @@
             hidden
           >
             <div class="mcp-ai-panel-inner">
-              <h3 id="mcpAiHeading" class="mcp-ai-heading">MCP для ИИ</h3>
-              <p class="mcp-ai-lead">
-                <strong>Model Context Protocol</strong> — отдельный HTTP-сервис с тем же in-memory
-                хранилищем, что и REST: чтение/запись регистров и дискретов через
-                <strong>tools</strong> для клиентов вроде Cursor.
-              </p>
+              <h3 id="mcpAiHeading" class="mcp-ai-heading" data-i18n="mcp.heading">MCP for AI</h3>
+              <p class="mcp-ai-lead" data-i18n="mcp.lead"></p>
               <ul class="mcp-ai-list">
-                <li>Транспорт: <strong>Streamable HTTP</strong>, путь <code>/mcp</code></li>
-                <li id="mcpAiUrlLine">
-                  Подсказка URL подставляется из адреса этой страницы…
-                </li>
-                <li>
-                  Внутри контейнера MCP слушает <strong>8081</strong>; с хоста при пробросе
-                  <code>18081:8081</code> порт по умолчанию в примере ниже — <strong>18081</strong>. Иной порт:
-                  добавьте в URL UI параметр <code>?mcpPort=8081</code> (нативный запуск без Docker).
-                </li>
-                <li>Переменная окружения <code>MCP_SERVER_PORT</code> (в процессе по умолчанию <strong>8081</strong>); <strong>0</strong> — MCP выключен</li>
-                <li>
-                  В tools адрес регистра — <strong>смещение по протоколу</strong> (0-based): <strong>40001 → addr 0</strong>,
-                  <strong>40021 → addr 20</strong>.
-                </li>
-                <li>Инструменты: <code>modbus_read_holding_registers</code>, <code>modbus_write_holding_registers</code> и др.</li>
+                <li data-i18n="mcp.li1"></li>
+                <li id="mcpAiUrlLine"></li>
+                <li data-i18n="mcp.li3"></li>
+                <li data-i18n="mcp.li4"></li>
+                <li data-i18n="mcp.li5"></li>
+                <li data-i18n="mcp.li6"></li>
               </ul>
-              <p class="mcp-ai-config-title">Пример конфигурации Cursor</p>
-              <p class="mcp-ai-config-hint">
-                Файл <code>mcp.json</code>: в каталоге проекта <code>.cursor/mcp.json</code> или глобально
-                <code>%USERPROFILE%\.cursor\mcp.json</code> (Windows). После изменения — полный перезапуск Cursor.
-                Хост и порт в примере берутся из адреса этой страницы (и <code>?mcpPort=</code>).
-              </p>
-              <pre class="mcp-ai-pre" id="mcpCursorConfig" aria-label="Пример mcp.json для Cursor"><code id="mcpCursorConfigCode">{}</code></pre>
+              <p class="mcp-ai-config-title" data-i18n="mcp.configTitle">Cursor configuration example</p>
+              <p class="mcp-ai-config-hint" data-i18n="mcp.configHint"></p>
+              <pre class="mcp-ai-pre" id="mcpCursorConfig" data-i18n-attr="aria-label:mcp.preAria"><code id="mcpCursorConfigCode">{}</code></pre>
               <div class="mcp-ai-panel-actions">
-                <button type="button" class="mcp-ai-dl" id="mcpConfigDownload">
-                  Скачать mcp.json
+                <button type="button" class="mcp-ai-dl" id="mcpConfigDownload" data-i18n="mcp.download">
+                  Download mcp.json
                 </button>
-                <button type="button" class="mcp-ai-close" id="mcpAiClose" aria-label="Закрыть">
-                  Закрыть
-                </button>
+                <button type="button" class="mcp-ai-close" id="mcpAiClose" data-i18n="mcp.close">Close</button>
               </div>
             </div>
           </div>
         </div>
-        <a class="mfc-link" href="/api/v1/swagger/" target="_blank" rel="noopener">Swagger</a>
+        <a class="mfc-link" href="/api/v1/swagger/" target="_blank" rel="noopener" data-i18n="swagger">Swagger</a>
       </div>
     </header>
 
-    <div class="mfc-tabs" role="tablist" aria-label="Таблица Modbus">
+    <div class="mfc-tabs" role="tablist" data-i18n-attr="aria-label:tabs.aria" aria-label="Modbus table">
       <button type="button" class="mfc-tab active" data-kind="holding" role="tab" aria-selected="true" title="FC 03/16">
-        <span class="tab-num">4x</span> Holding registers
+        <span class="tab-num">4x</span> <span data-i18n="tab.holding">Holding registers</span>
       </button>
       <button type="button" class="mfc-tab" data-kind="input" role="tab" title="FC 04">
-        <span class="tab-num">3x</span> Input registers
+        <span class="tab-num">3x</span> <span data-i18n="tab.input">Input registers</span>
       </button>
       <button type="button" class="mfc-tab" data-kind="coil" role="tab" title="FC 01/05">
-        <span class="tab-num">0x</span> Coils
+        <span class="tab-num">0x</span> <span data-i18n="tab.coil">Coils</span>
       </button>
       <button type="button" class="mfc-tab" data-kind="dinput" role="tab" title="FC 02">
-        <span class="tab-num">1x</span> Discrete inputs
+        <span class="tab-num">1x</span> <span data-i18n="tab.dinput">Discrete inputs</span>
       </button>
     </div>
 
@@ -133,19 +143,19 @@
 
     <div class="mfc-toolbar">
       <div class="tb-group">
-        <span class="tb-label">Сдвиг</span>
-        <input id="addr" type="number" min="0" max="65534" value="0" title="Сдвиг окна: стартовый адрес слова/бита (0-based, протокол)" />
-        <span class="tb-label">Количество</span>
-        <input id="cnt" type="number" min="1" max="256" value="16" title="Сколько слов/битов запросить; в таблице не более 10 строк" />
-        <button type="button" id="btnRead" class="mfc-btn mfc-btn-default">Обновить</button>
+        <span class="tb-label" data-i18n="label.offset">Offset</span>
+        <input id="addr" type="number" min="0" max="65534" value="0" data-i18n-attr="title:addr.title" title="" />
+        <span class="tb-label" data-i18n="label.count">Count</span>
+        <input id="cnt" type="number" min="1" max="256" value="16" data-i18n-attr="title:cnt.title" title="" />
+        <button type="button" id="btnRead" class="mfc-btn mfc-btn-default" data-i18n="btn.refresh">Refresh</button>
       </div>
       <div class="tb-sep"></div>
       <div class="tb-group tb-poll-group">
-        <label class="tb-poll-label" title="Периодическое обновление таблицы">
+        <label class="tb-poll-label" data-i18n-attr="title:poll.title" title="">
           <input type="checkbox" id="pollEnabled" checked />
-          <span>Авто</span>
+          <span data-i18n="label.auto">Auto</span>
         </label>
-        <span class="tb-label">Интервал</span>
+        <span class="tb-label" data-i18n="label.interval">Interval</span>
         <input
           id="pollIntervalSec"
           type="number"
@@ -153,25 +163,26 @@
           max="300"
           value="1"
           step="1"
-          title="Секунды между автообновлениями"
-          aria-label="Интервал автообновления в секундах"
+          data-i18n-attr="title:pollInterval.title;aria-label:pollInterval.aria"
+          title=""
+          aria-label=""
         />
-        <span class="tb-poll-unit" aria-hidden="true">с</span>
+        <span class="tb-poll-unit" data-i18n="poll.unit" aria-hidden="true">s</span>
       </div>
       <div class="tb-sep"></div>
       <div class="tb-group" id="regDisplayOpts">
-        <span class="tb-label">Формат</span>
-        <select id="displayMode" title="Декодирование слов">
-          <option value="uint16">UInt16</option>
-          <option value="int16">Int16</option>
-          <option value="bitmask">Битовая маска</option>
-          <option value="int32">Int32</option>
-          <option value="float32">Float</option>
-          <option value="float64">Double</option>
+        <span class="tb-label" data-i18n="label.format">Format</span>
+        <select id="displayMode" data-i18n-attr="title:displayMode.title" title="">
+          <option value="uint16" data-i18n="fmt.uint16">UInt16</option>
+          <option value="int16" data-i18n="fmt.int16">Int16</option>
+          <option value="bitmask" data-i18n="fmt.bitmask">Bitmask</option>
+          <option value="int32" data-i18n="fmt.int32">Int32</option>
+          <option value="float32" data-i18n="fmt.float32">Float</option>
+          <option value="float64" data-i18n="fmt.float64">Double</option>
         </select>
         <span id="wordOrderWrap" class="tb-word-order-wrap">
-          <span class="tb-label">32 бит слова</span>
-          <select id="wordOrder32" title="Порядок 16-бит слов">
+          <span class="tb-label" data-i18n="label.word32">32-bit words</span>
+          <select id="wordOrder32" data-i18n-attr="title:wordOrder.title" title="">
             <option value="HL">HL</option>
             <option value="LH">LH</option>
           </select>
@@ -179,13 +190,13 @@
       </div>
       <div class="tb-sep"></div>
       <div class="tb-group">
-        <button type="button" id="btnPrev" class="mfc-btn" title="Сдвиг окна назад">◀</button>
-        <button type="button" id="btnNext" class="mfc-btn" title="Сдвиг окна вперёд">▶</button>
+        <button type="button" id="btnPrev" class="mfc-btn" data-i18n-attr="title:btn.prev" title="">◀</button>
+        <button type="button" id="btnNext" class="mfc-btn" data-i18n-attr="title:btn.next" title="">▶</button>
       </div>
     </div>
 
     <div class="mfc-grid-wrap">
-      <table id="grid" class="mfc-matrix" aria-label="Матрица регистров">
+      <table id="grid" class="mfc-matrix" data-i18n-attr="aria-label:grid.aria" aria-label="">
         <thead id="gridHead">
           <tr id="matrixHeaderRow"></tr>
         </thead>
@@ -200,6 +211,16 @@
     </footer>
   </div>
 
+  <script src="/ui/i18n.js"></script>
   <script src="/ui/app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker
+          .register("/ui/sw.js", { scope: "/ui/" })
+          .catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>
