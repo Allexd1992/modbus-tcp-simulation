@@ -7,7 +7,7 @@
 [![Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**In-memory store · Web UI · REST · Swagger · MCP over HTTP**
+**Modbus TCP Server ·  In-memory store · Web UI · REST · Swagger · MCP over HTTP**
 
 <br/>
 
@@ -27,8 +27,9 @@ A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API
 
 - **Modbus TCP** — holding/input registers, coils, and discrete inputs.
 - **REST** — the same data as Modbus and MCP.
-- **Web UI** (`/ui/`) — register matrix, UInt16/Int32/float/double formats, bitmask, auto-refresh with configurable interval, MCP hint with `mcp.json` example and download.
+- **Web UI** (`/ui/`) — register matrix, UInt16/Int32/float/double formats, bitmask, auto-refresh with configurable interval, MCP hint with `mcp.json` example and download. **English** (default) and **Russian** via **EN** / **RU** in the title bar; choice is stored in the browser.
 - **MCP** — Streamable HTTP at `/mcp`, tools such as `modbus_read_holding_registers`, `modbus_write_holding_registers`, and more.
+- **Installable PWA** — open the UI in **Chrome** or **Edge** at `http://127.0.0.1:9090/ui/` (or your host); after the page loads, use **Install** in the address bar (same idea as **YouTube** / **Spotify** web: standalone window, no tabs). Uses `manifest.json` + a minimal service worker under `/ui/`.
 
 ## 📋 Requirements
 
@@ -39,16 +40,16 @@ A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API
 
 ### Docker Hub image (recommended)
 
-Current tag: **`2.0.0`**.
+Current tag: **`2.1.0`**.
 
 ```bash
-docker pull allexd2010/modbus-server-sim:2.0.0
+docker pull allexd2010/modbus-server-sim:2.1.0
 
 docker run -d --name modbus-sim \
   -p 9090:9090 \
   -p 502:502 \
   -p 18081:8081 \
-  allexd2010/modbus-server-sim:2.0.0
+  allexd2010/modbus-server-sim:2.1.0
 ```
 
 | Host | Container | Purpose |
@@ -62,7 +63,7 @@ docker run -d --name modbus-sim \
 Build the image locally:
 
 ```bash
-docker build -t allexd2010/modbus-server-sim:2.0.0 .
+docker build -t allexd2010/modbus-server-sim:2.1.0 .
 ```
 
 ### Docker Compose
@@ -80,6 +81,14 @@ cargo run --release
 ```
 
 Defaults: web **9090**, Modbus **502**, MCP **8081** (see environment variables below). UI: `http://127.0.0.1:9090/ui/`.
+
+### Install as app (PWA)
+
+1. Start the server (`cargo run --release` or Docker with port **9090** published).
+2. Open **`http://127.0.0.1:9090/ui/`** in **Chrome** or **Microsoft Edge** (secure context: `localhost` / `127.0.0.1` works).
+3. When the browser shows **Install** in the address bar (or menu → *Install this site as an app*), confirm — the UI opens in its **own window** without the normal browser toolbar.
+
+The installed app still talks to the **same origin** as the page; keep the backend running. For a remote server, use that host in the URL before installing.
 
 ## 🌐 Services after startup
 
@@ -154,7 +163,7 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 ## 📦 Image & registry
 
 - Docker Hub: `allexd2010/modbus-server-sim`
-- Tags: e.g. **`2.0.0`**
+- Tags: e.g. **`2.1.0`**
 
 ## 📄 License
 
@@ -162,4 +171,4 @@ MIT
 
 ---
 
-<p align="center"><strong>Documentation</strong> · image tag <code>2.0.0</code></p>
+<p align="center"><strong>Documentation</strong> · image tag <code>2.1.0</code></p>

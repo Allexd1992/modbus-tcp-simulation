@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   modbus-server:
-    image: allexd2010/modbus-server-sim:2.0.0
+    image: allexd2010/modbus-server-sim:2.1.0
     container_name: modbus-tcp-server
     ports:
       - "9090:9090"   # Web API + UI + Swagger
