@@ -137,8 +137,6 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 - Docker Hub: `allexd2010/modbus-server-sim`
 - Tags: e.g. **`2.0.0`**
 
-Long-form description for Docker Hub: see **`DOCKER_HUB.md`**.
-
 ## License
 
 MIT
