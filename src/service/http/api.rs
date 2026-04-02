@@ -1,4 +1,3 @@
-
 use rocket::data::ByteUnit;
 use rocket::{State, post, get, routes, Route};
 use rocket::http::Status;
@@ -199,7 +198,6 @@ pub async fn holding_registers_write(addr: u16, values: Data<'_>, state: &State<
     let values: RequestRegister = serde_json::from_str(payload_str).unwrap();
     let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     store.holding_registers_write(addr, &values.data).map_err(|_| Status::InternalServerError)?;
-    println!("{:?}", values);
     Ok(())
 }
 
@@ -223,7 +221,6 @@ pub async fn input_registers_write(addr: u16, values: Data<'_>, state: &State<Ap
     let values: RequestRegister = serde_json::from_str(payload_str).unwrap();
     let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     store.input_registers_write(addr, &values.data).map_err(|_| Status::InternalServerError)?;
-    println!("{:?}", values);
     Ok(())
 }
 
@@ -248,7 +245,6 @@ pub async fn discrete_coils_write(addr: u16, values: Data<'_>, state: &State<App
     let values: RequestCoil = serde_json::from_str(payload_str).unwrap();
     let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     store.discrete_coil_write(addr, &values.data).map_err(|_| Status::InternalServerError)?;
-    println!("{:?}", values);
     Ok(())
 }
 
@@ -272,7 +268,6 @@ pub async fn discrete_inputs_write(addr: u16, values: Data<'_>, state: &State<Ap
     let values: RequestCoil = serde_json::from_str(payload_str).unwrap();
     let mut store = state.store.lock().map_err(|_| Status::InternalServerError)?;
     store.discrete_input_write(addr, &values.data).map_err(|_| Status::InternalServerError)?;
-    println!("{:?}", values);
     Ok(())
 }
 
