@@ -2,25 +2,25 @@
 
 [![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim)
 
-Симулятор Modbus TCP с **единым in-memory хранилищем**: веб-интерфейс, **REST API**, **Swagger** и **MCP (Model Context Protocol)** по HTTP для клиентов вроде Cursor. Написано на Rust (Rocket, tokio-modbus, rmcp).
+A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API**, **Swagger**, and **MCP (Model Context Protocol)** over HTTP for clients such as Cursor. Written in Rust (Rocket, tokio-modbus, rmcp).
 
-## Возможности
+## Features
 
-- **Modbus TCP** — holding/input registers, coils и discrete inputs.
-- **REST** — те же данные, что и по Modbus и MCP.
-- **Веб-UI** (`/ui/`) — матрица регистров, форматы UInt16/Int32/float/double, битовая маска, автообновление с настраиваемым интервалом, подсказка MCP с примером `mcp.json` и скачиванием.
-- **MCP** — Streamable HTTP на пути `/mcp`, инструменты `modbus_read_holding_registers`, `modbus_write_holding_registers` и др.
+- **Modbus TCP** — holding/input registers, coils, and discrete inputs.
+- **REST** — the same data as Modbus and MCP.
+- **Web UI** (`/ui/`) — register matrix, UInt16/Int32/float/double formats, bitmask, auto-refresh with configurable interval, MCP hint with `mcp.json` example and download.
+- **MCP** — Streamable HTTP at `/mcp`, tools such as `modbus_read_holding_registers`, `modbus_write_holding_registers`, and more.
 
-## Требования
+## Requirements
 
-- Для сборки: Rust toolchain.
-- Для контейнера: Docker (или только образ с Docker Hub).
+- **From source:** Rust toolchain.
+- **Container:** Docker (or pull-only from Docker Hub).
 
-## Быстрый старт
+## Quick start
 
-### Образ Docker Hub (рекомендуется)
+### Docker Hub image (recommended)
 
-Текущий тег: **`2.0.0`**.
+Current tag: **`2.0.0`**.
 
 ```bash
 docker pull allexd2010/modbus-server-sim:2.0.0
@@ -32,15 +32,15 @@ docker run -d --name modbus-sim \
   allexd2010/modbus-server-sim:2.0.0
 ```
 
-| На хосте | В контейнере | Назначение |
-|----------|----------------|------------|
+| Host | Container | Purpose |
+|------|-----------|---------|
 | 9090 | 9090 | HTTP: REST, Swagger, `/ui/` |
 | 502 | 502 | Modbus TCP |
-| **18081** | **8081** | MCP (`http://<хост>:18081/mcp`) |
+| **18081** | **8081** | MCP (`http://<host>:18081/mcp`) |
 
-Почему **18081** снаружи: внутри процесса MCP слушает порт из `MCP_SERVER_PORT` (по умолчанию **8081**). Проброс `18081:8081` совпадает с подсказкой в веб-UI для Cursor. Если нужен MCP на хосте как **8081**, используйте `-p 8081:8081`.
+**Why 18081 on the host:** MCP listens inside the process on `MCP_SERVER_PORT` (default **8081**). Mapping `18081:8081` matches the web UI hint for Cursor. For MCP on the host as **8081**, use `-p 8081:8081`.
 
-Локальная сборка образа:
+Build the image locally:
 
 ```bash
 docker build -t allexd2010/modbus-server-sim:2.0.0 .
@@ -52,54 +52,54 @@ docker build -t allexd2010/modbus-server-sim:2.0.0 .
 docker compose up -d
 ```
 
-Порты и образ задаются в `docker-compose.yml`.
+Ports and image are defined in `docker-compose.yml`.
 
-### Без Docker
+### Without Docker
 
 ```bash
 cargo run --release
 ```
 
-По умолчанию: веб **9090**, Modbus **502**, MCP **8081** (см. переменные окружения ниже). UI: `http://127.0.0.1:9090/ui/`.
+Defaults: web **9090**, Modbus **502**, MCP **8081** (see environment variables below). UI: `http://127.0.0.1:9090/ui/`.
 
-## Сервисы после запуска
+## Services after startup
 
-| Что | URL / адрес |
-|-----|-------------|
-| Веб-UI | `http://<хост>:9090/ui/` |
-| Swagger | `http://<хост>:9090/api/v1/swagger/` |
-| REST | базовый префикс `/api/v1/` |
-| Modbus TCP | `<хост>:502` (или порт из `MB_SERVER_PORT` и проброса Docker) |
-| MCP | `http://<хост>:<порт MCP на хосте>/mcp` |
+| Service | URL / address |
+|---------|----------------|
+| Web UI | `http://<host>:9090/ui/` |
+| Swagger | `http://<host>:9090/api/v1/swagger/` |
+| REST | base prefix `/api/v1/` |
+| Modbus TCP | `<host>:502` (or the port from `MB_SERVER_PORT` and your Docker `-p` mapping) |
+| MCP | `http://<host>:<MCP port on host>/mcp` |
 
-## Веб-интерфейс
+## Web UI
 
-- Вкладки: holding / input / coils / discrete inputs.
-- Поля **Сдвиг** и **Количество** задают окно чтения (до 256 слов запросом; таблица показывает ограниченное число строк — см. подсказку внизу).
-- **Авто** — периодическое чтение; интервал в секундах; при фокусе в ячейке автообновление не перезаписывает ввод.
-- Кнопка **AI** — текст про MCP, текущий URL для Cursor, скачивание `mcp.json` (хост как у страницы, порт **18081** по умолчанию или `?mcpPort=` в URL страницы).
+- Tabs: holding / input / coils / discrete inputs.
+- **Offset** and **Count** set the read window (up to 256 words per request; the table shows a limited number of rows — see the hint at the bottom).
+- **Auto** — periodic reads; interval in seconds; while a cell is focused, auto-refresh does not overwrite your input.
+- **AI** — MCP help text, current URL for Cursor, `mcp.json` download (host as on the page, port **18081** by default, or `?mcpPort=` in the page URL).
 
-## Адреса Modbus и документация
+## Modbus addressing
 
-В протоколе и API используется **смещение с нуля** (первый holding — адрес **0**). Соответствие «документации» Modicon: holding **40001** → смещение **0**, **40021** → **20**.
+The protocol and API use **zero-based offsets** (the first holding register is address **0**). Modicon-style docs: holding **40001** → offset **0**, **40021** → **20**.
 
-## REST API (кратко)
+## REST API (short)
 
-Все маршруты под `/api/v1/`; примеры для holding:
+All routes are under `/api/v1/`; holding examples:
 
-- `GET /api/v1/holding-registers/{addr}/{cnt}` — чтение
-- `POST /api/v1/holding-register/{addr}/{data}` — одно слово
-- `POST /api/v1/holding-registers/{addr}` — тело JSON `{"data":[…]}`
+- `GET /api/v1/holding-registers/{addr}/{cnt}` — read
+- `POST /api/v1/holding-register/{addr}/{data}` — single word
+- `POST /api/v1/holding-registers/{addr}` — JSON body `{"data":[…]}`
 
-Аналогично для input, coils и discrete — см. Swagger.
+Same pattern for input, coils, and discrete — see Swagger.
 
-## MCP (Cursor и др.)
+## MCP (Cursor and others)
 
-- Транспорт: **Streamable HTTP**, endpoint **`/mcp`**.
-- Тот же store, что у REST.
-- В инструментах параметр **`addr`** — **смещение по протоколу**, не номер 40001.
+- Transport: **Streamable HTTP**, endpoint **`/mcp`**.
+- Same store as REST.
+- In tools, **`addr`** is the **protocol offset**, not a 40001-style number.
 
-Пример `mcp.json` (глобально `%USERPROFILE%\.cursor\mcp.json` или проект `.cursor/mcp.json`):
+Example `mcp.json` (global `%USERPROFILE%\.cursor\mcp.json` or project `.cursor/mcp.json`):
 
 ```json
 {
@@ -111,38 +111,38 @@ cargo run --release
 }
 ```
 
-При локальном `cargo run` без Docker обычно: `http://127.0.0.1:8081/mcp`. После смены конфигурации Cursor нужен **полный перезапуск** Cursor.
+With local `cargo run` and no Docker, usually: `http://127.0.0.1:8081/mcp`. After changing the config, **fully restart** Cursor.
 
-Отключить MCP: `MCP_SERVER_PORT=0`.
+Disable MCP: `MCP_SERVER_PORT=0`.
 
-## Переменные окружения
+## Environment variables
 
-| Переменная | По умолчанию | Описание |
-|------------|----------------|----------|
-| `WEB_SERVER_PORT` | `9090` | HTTP (REST, Swagger, статика `/ui`) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEB_SERVER_PORT` | `9090` | HTTP (REST, Swagger, static `/ui`) |
 | `MB_SERVER_PORT` | `502` | Modbus TCP |
-| `MCP_SERVER_PORT` | `8081` | Порт MCP внутри процесса; **`0`** — не поднимать MCP |
-| `RUST_LOG` | (нет) | Уровень логирования, например `info` |
+| `MCP_SERVER_PORT` | `8081` | MCP port inside the process; **`0`** — do not start MCP |
+| `RUST_LOG` | (none) | Log level, e.g. `info` |
 
+**Modbus clients:** use the host port mapped from `MB_SERVER_PORT` (default **502**).
 
+## Troubleshooting
 
-Порт замените на тот, что задан в `MB_SERVER_PORT` и проброшен с хоста (по умолчанию **502**).
+- **Port in use** — check `netstat` / Task Manager; change `-p` mappings or environment variables.
+- **MCP not responding in Cursor** — ensure the URL uses the **host and published port** of the container (often **18081**, not 8081).
+- **Empty or wrong data in the UI** — the API must return a **JSON array**; HTML from a proxy will not fill the table.
 
-## Устранение неполадок
-
-- **Порт занят** — проверьте `netstat` / Диспетчер задач; смените проброс или переменные окружения.
-- **MCP в Cursor не отвечает** — убедитесь, что URL указывает на **хост и порт**, куда проброшен контейнер (часто **18081**, а не 8081).
-- **Пустой или не тот ответ в UI** — API должен возвращать **JSON-массив**; при прокси и HTML-ответе таблица не заполнится.
-
-
+## Image & registry
 
 - Docker Hub: `allexd2010/modbus-server-sim`
-- Теги: например **`2.0.0`**
+- Tags: e.g. **`2.0.0`**
 
-## Лицензия
+Long-form description for Docker Hub: see **`DOCKER_HUB.md`**.
+
+## License
 
 MIT
 
 ---
 
-**Версия документации:** соответствует релизу ветки и образу **2.0.0**.
+**Documentation version:** matches the branch release and image **2.0.0**.
