@@ -44,12 +44,14 @@ impl tokio_modbus::server::Service for ModbusService {
         let mut reg = self.registry.lock().unwrap();
 
         match req {
-            Request::ReadInputRegisters(addr, cnt) => {
-                Self::map_value(reg.input_registers_read(addr, cnt), Response::ReadInputRegisters)
-            }
-            Request::ReadHoldingRegisters(addr, cnt) => {
-                Self::map_value(reg.holding_registers_read(addr, cnt), Response::ReadHoldingRegisters)
-            }
+            Request::ReadInputRegisters(addr, cnt) => Self::map_value(
+                reg.input_registers_read(addr, cnt),
+                Response::ReadInputRegisters,
+            ),
+            Request::ReadHoldingRegisters(addr, cnt) => Self::map_value(
+                reg.holding_registers_read(addr, cnt),
+                Response::ReadHoldingRegisters,
+            ),
             Request::ReadCoils(addr, cnt) => {
                 Self::map_value(reg.discrete_coils_read(addr, cnt), Response::ReadCoils)
             }

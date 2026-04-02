@@ -1,27 +1,22 @@
-use std::{sync::{Arc, Mutex}};
-use rocket::{Config, Rocket, Build};
+use super::api::Api;
+use crate::service::{
+    http::{state::AppState, swagger::ApiDoc},
+    modbus::store::Store,
+};
 use rocket::fs::{relative, FileServer};
+use rocket::{Build, Config, Rocket};
+use std::sync::{Arc, Mutex};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::service::{modbus::{ store::Store}, http::{state::AppState, swagger::ApiDoc}};
-use super::api::Api;
 
-
-
-pub fn get_rocket(config:Config, registry:Arc<Mutex<Store>>,api:Api)->Rocket<Build>{
-
+pub fn get_rocket(config: Config, registry: Arc<Mutex<Store>>, api: Api) -> Rocket<Build> {
     rocket::custom(config)
-    .manage(AppState::new(Arc::clone(&registry)))
-    .mount(
-        "/",
-        SwaggerUi::new("/api/v1/swagger/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
-    )
-    .mount("/ui", FileServer::from(relative!("static")))
-    .mount("/api/v1",api.list)
+        .manage(AppState::new(Arc::clone(&registry)))
+        .mount(
+            "/",
+            SwaggerUi::new("/api/v1/swagger/<_..>")
+                .url("/api-docs/openapi.json", ApiDoc::openapi()),
+        )
+        .mount("/ui", FileServer::from(relative!("static")))
+        .mount("/api/v1", api.list)
 }
-
-
-
-
-
-  
