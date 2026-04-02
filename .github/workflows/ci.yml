@@ -1,5 +1,5 @@
-# Gitea Actions — Modbus TCP Server Simulation (Rust + static UI)
-# Runners: set labels in Administration → Actions → Runners (e.g. ubuntu-latest).
+# CI: GitHub Actions; Gitea Actions uses this path if `.gitea/workflows` is absent.
+# Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
 name: CI
 
 on:
