@@ -1,22 +1,41 @@
+<div align="center">
+
 # Modbus TCP Server Simulation
 
-[![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim) [![GitHub](https://img.shields.io/badge/GitHub-Allexd1992%2Fmodbus--tcp--simulation-181717?logo=github)](https://github.com/Allexd1992/modbus-tcp-simulation)
+[![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim)
+[![GitHub](https://img.shields.io/badge/GitHub-Allexd1992%2Fmodbus--tcp--simulation-181717?logo=github)](https://github.com/Allexd1992/modbus-tcp-simulation)
+[![Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API**, **Swagger**, and **MCP (Model Context Protocol)** over HTTP for clients such as Cursor. Written in Rust (Rocket, tokio-modbus, rmcp).
+**In-memory store · Web UI · REST · Swagger · MCP over HTTP**
 
-## Features
+<br/>
+
+<img src="docs/web-ui.png" alt="Modbus TCP Server Simulation — web dashboard" width="920"/>
+
+*Modern dark glassmorphism UI: register matrix, Float / 32-bit word order, auto-refresh, Swagger & AI.*
+
+<br/>
+
+</div>
+
+---
+
+A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API**, **Swagger**, and **MCP (Model Context Protocol)** over HTTP for clients such as Cursor. Built with **Rocket**, **tokio-modbus**, and **rmcp**.
+
+## ✨ Features
 
 - **Modbus TCP** — holding/input registers, coils, and discrete inputs.
 - **REST** — the same data as Modbus and MCP.
 - **Web UI** (`/ui/`) — register matrix, UInt16/Int32/float/double formats, bitmask, auto-refresh with configurable interval, MCP hint with `mcp.json` example and download.
 - **MCP** — Streamable HTTP at `/mcp`, tools such as `modbus_read_holding_registers`, `modbus_write_holding_registers`, and more.
 
-## Requirements
+## 📋 Requirements
 
 - **From source:** Rust toolchain.
 - **Container:** Docker (or pull-only from Docker Hub).
 
-## Quick start
+## 🚀 Quick start
 
 ### Docker Hub image (recommended)
 
@@ -62,7 +81,7 @@ cargo run --release
 
 Defaults: web **9090**, Modbus **502**, MCP **8081** (see environment variables below). UI: `http://127.0.0.1:9090/ui/`.
 
-## Services after startup
+## 🌐 Services after startup
 
 | Service | URL / address |
 |---------|----------------|
@@ -72,18 +91,18 @@ Defaults: web **9090**, Modbus **502**, MCP **8081** (see environment variables 
 | Modbus TCP | `<host>:502` (or the port from `MB_SERVER_PORT` and your Docker `-p` mapping) |
 | MCP | `http://<host>:<MCP port on host>/mcp` |
 
-## Web UI
+## 🖥️ Web UI
 
 - Tabs: holding / input / coils / discrete inputs.
 - **Offset** and **Count** set the read window (up to 256 words per request; the table shows a limited number of rows — see the hint at the bottom).
 - **Auto** — periodic reads; interval in seconds; while a cell is focused, auto-refresh does not overwrite your input.
 - **AI** — MCP help text, current URL for Cursor, `mcp.json` download (host as on the page, port **18081** by default, or `?mcpPort=` in the page URL).
 
-## Modbus addressing
+## 📍 Modbus addressing
 
 The protocol and API use **zero-based offsets** (the first holding register is address **0**). Modicon-style docs: holding **40001** → offset **0**, **40021** → **20**.
 
-## REST API (short)
+## 🔌 REST API (short)
 
 All routes are under `/api/v1/`; holding examples:
 
@@ -93,7 +112,7 @@ All routes are under `/api/v1/`; holding examples:
 
 Same pattern for input, coils, and discrete — see Swagger.
 
-## MCP (Cursor and others)
+## 🤖 MCP (Cursor and others)
 
 - Transport: **Streamable HTTP**, endpoint **`/mcp`**.
 - Same store as REST.
@@ -115,7 +134,7 @@ With local `cargo run` and no Docker, usually: `http://127.0.0.1:8081/mcp`. Afte
 
 Disable MCP: `MCP_SERVER_PORT=0`.
 
-## Environment variables
+## ⚙️ Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -126,21 +145,21 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 
 **Modbus clients:** use the host port mapped from `MB_SERVER_PORT` (default **502**).
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 - **Port in use** — check `netstat` / Task Manager; change `-p` mappings or environment variables.
 - **MCP not responding in Cursor** — ensure the URL uses the **host and published port** of the container (often **18081**, not 8081).
 - **Empty or wrong data in the UI** — the API must return a **JSON array**; HTML from a proxy will not fill the table.
 
-## Image & registry
+## 📦 Image & registry
 
 - Docker Hub: `allexd2010/modbus-server-sim`
 - Tags: e.g. **`2.0.0`**
 
-## License
+## 📄 License
 
 MIT
 
 ---
 
-**Documentation version:** matches the branch release and image **2.0.0**.
+<p align="center"><strong>Documentation</strong> · image tag <code>2.0.0</code></p>
