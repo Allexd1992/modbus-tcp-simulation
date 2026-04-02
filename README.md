@@ -1,6 +1,6 @@
 # Modbus TCP Server Simulation
 
-[![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim)
+[![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim) [![GitHub](https://img.shields.io/badge/GitHub-Allexd1992%2Fmodbus--tcp--simulation-181717?logo=github)](https://github.com/Allexd1992/modbus-tcp-simulation)
 
 A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API**, **Swagger**, and **MCP (Model Context Protocol)** over HTTP for clients such as Cursor. Written in Rust (Rocket, tokio-modbus, rmcp).
 
