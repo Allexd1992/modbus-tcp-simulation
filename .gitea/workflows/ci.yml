@@ -1,0 +1,197 @@
+# Gitea Actions — Modbus TCP Server Simulation (Rust + static UI)
+# Runners: set labels in Administration → Actions → Runners (e.g. ubuntu-latest).
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+      - "*.*.*"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: "Enable debug mode"
+        required: false
+        default: "false"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  debug-info:
+    name: Workflow Debug Info
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print workflow info
+        run: |
+          echo "=== Workflow Triggered ==="
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "=========================="
+
+  lint-rust:
+    name: Lint Rust (fmt + clippy)
+    runs-on: ubuntu-latest
+    needs: [debug-info]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
+
+  lint-dockerfile:
+    name: Lint Dockerfile (Hadolint)
+    runs-on: ubuntu-latest
+    needs: [debug-info]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        continue-on-error: true
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
+  test:
+    name: Cargo test
+    runs-on: ubuntu-latest
+    needs: [lint-rust]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        run: cargo test --verbose
+
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo build --release
+        run: cargo build --release --verbose
+
+  docker-build-push:
+    name: Build and push Docker image
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Vault CLI
+        run: |
+          wget -qO vault.zip "http://10.15.5.12:4646/api/v1/buckets/packet/objects/download?prefix=vault_1.15.4_linux_amd64.zip"
+          unzip -q vault.zip
+          sudo mv vault /usr/local/bin/
+          rm vault.zip
+          vault --version
+
+      - name: Load secrets from Vault
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+          VAULT_SKIP_VERIFY: "true"
+        run: |
+          echo "Loading secrets from Vault..."
+          vault kv get -format=json action/gitea | \
+            jq -r '.data.data | to_entries[] | "\(.key | ascii_upcase)=\(.value)"' >> $GITHUB_ENV
+          echo "Secrets loaded."
+
+      - name: Login to Gitea Container Registry
+        run: |
+          echo "$TOKEN" | docker login git.mylocaldomain.online -u "$USER" --password-stdin
+
+      - name: Extract metadata
+        id: meta
+        env:
+          REF: ${{ github.ref }}
+          REPO_FULL: ${{ github.repository }}
+        run: |
+          REPO_LOWER=$(echo "$REPO_FULL" | tr '[:upper:]' '[:lower:]')
+          echo "repo=${REPO_LOWER}" >> $GITHUB_OUTPUT
+          if [[ "$REF" =~ ^refs/tags/v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            VERSION="${REF#refs/tags/}"
+            if [[ ! "$VERSION" =~ ^v ]]; then
+              VERSION="v${VERSION}"
+            fi
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "Release build: ${VERSION}"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "Branch/test build"
+          fi
+
+      - name: Build and push (branch / test)
+        if: steps.meta.outputs.is_release != 'true'
+        env:
+          REGISTRY: git.mylocaldomain.online
+        run: |
+          REPO="${{ steps.meta.outputs.repo }}"
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${REGISTRY}/${REPO}/modbus-server-sim:sha-${SHORT_SHA} \
+            -t ${REGISTRY}/${REPO}/modbus-server-sim:test \
+            --push .
+
+      - name: Build and push (release tag)
+        if: steps.meta.outputs.is_release == 'true'
+        env:
+          REGISTRY: git.mylocaldomain.online
+        run: |
+          REPO="${{ steps.meta.outputs.repo }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${REGISTRY}/${REPO}/modbus-server-sim:latest \
+            -t ${REGISTRY}/${REPO}/modbus-server-sim:${VERSION} \
+            --push .
+
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - lint-rust
+      - lint-dockerfile
+      - test
+      - build
+    if: success()
+    steps:
+      - name: OK
+        run: echo "Lint, test, and build passed."

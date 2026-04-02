@@ -1,6 +1,10 @@
 (function () {
   const API = "/api/v1";
 
+  function t(key, params) {
+    return window.APCS_I18N ? window.APCS_I18N.t(key, params) : key;
+  }
+
   const kind = document.getElementById("kind");
   const displayMode = document.getElementById("displayMode");
   const wordOrder32 = document.getElementById("wordOrder32");
@@ -213,10 +217,17 @@
     const a = Number(addrEl.value) || 0;
     const c = Number(cntEl.value) || 0;
     const end = a + Math.max(0, c - 1);
-    const unit = isBoolKind(kind.value) ? "бит" : "сл.";
+    const unit = isBoolKind(kind.value) ? t("unit.bit") : t("unit.word");
     let base =
       c > 0
-        ? `Окно: протокол ${a}…${end}  (${c} ${unit}) · док. ${docAddrLabel(kind.value, a)}…${docAddrLabel(kind.value, end)}`
+        ? t("area.window", {
+            a,
+            end,
+            c,
+            unit,
+            docS: docAddrLabel(kind.value, a),
+            docE: docAddrLabel(kind.value, end),
+          })
         : "";
     if (matrixRowsHint) base += " · " + matrixRowsHint;
     areaHint.textContent = base;
@@ -225,7 +236,10 @@
   function finishMatrixRowsHint(totalRowCount) {
     matrixRowsHint =
       totalRowCount > MAX_MATRIX_ROWS
-        ? `таблица: ${MAX_MATRIX_ROWS} из ${totalRowCount} строк`
+        ? t("area.tableTrunc", {
+            shown: MAX_MATRIX_ROWS,
+            total: totalRowCount,
+          })
         : "";
     updateAreaHint();
   }
@@ -251,12 +265,10 @@
 
   function syncCntLimits() {
     cntEl.max = String(MAX_READ_CNT);
-    cntEl.title =
-      "Сколько слов/битов запросить (1…" +
-      MAX_READ_CNT +
-      "); в таблице не более " +
-      MAX_MATRIX_ROWS +
-      " строк";
+    cntEl.title = t("cnt.title", {
+      maxRead: MAX_READ_CNT,
+      maxRows: MAX_MATRIX_ROWS,
+    });
     let v = Number(cntEl.value);
     if (!Number.isFinite(v) || v < 1) v = 1;
     if (v > MAX_READ_CNT) cntEl.value = String(MAX_READ_CNT);
@@ -269,19 +281,17 @@
     corner.className = "corner";
     corner.textContent = " ";
     corner.title =
-      mode === "bitmask"
-        ? "Адрес слова (протокол), справа — биты 0…15 (LSB = b0)"
-        : "Адрес первой ячейки строки (протокол, 0-based)";
+      mode === "bitmask" ? t("th.corner.bitmask") : t("th.corner.row");
     theadRow.appendChild(corner);
     for (let c = 0; c < cols; c++) {
       const th = document.createElement("th");
       th.className = "col-off";
       if (mode === "bitmask") {
         th.textContent = "b" + c;
-        th.title = "Бит " + c + " (младший — b0)";
+        th.title = t("th.bitTitle", { n: c });
       } else {
         th.textContent = "+" + c;
-        th.title = "Смещение в строке";
+        th.title = t("th.offsetTitle");
       }
       theadRow.appendChild(th);
     }
@@ -309,7 +319,7 @@
     th.className = "row-label";
     th.scope = "row";
     th.textContent = String(rowStart);
-    th.title = "Док: " + docAddrLabel(k, rowStart);
+    th.title = t("row.doc", { doc: docAddrLabel(k, rowStart) });
     return th;
   }
 
@@ -358,35 +368,35 @@
     const addr = Number(addrEl.value);
     const cnt = Number(cntEl.value);
     if (!Number.isFinite(addr) || addr < 0) {
-      setMsg("Некорректный адрес", "err");
+      setMsg(t("msg.badAddress"), "err");
       return;
     }
     if (!Number.isFinite(cnt) || cnt < 1 || cnt > MAX_READ_CNT) {
-      setMsg("Количество: 1…" + MAX_READ_CNT, "err");
+      setMsg(t("msg.badCount", { max: MAX_READ_CNT }), "err");
       return;
     }
     const mode = displayMode.value;
     const wo = wordOrder32.value;
     if (isRegisterKind(k) && mode === "int32" && cnt % 2 !== 0) {
-      setMsg("Для int32 нужно чётное число слов", "err");
+      setMsg(t("msg.int32even"), "err");
       return;
     }
     if (isRegisterKind(k) && mode === "float32" && cnt % 2 !== 0) {
-      setMsg("Для float нужно чётное число слов", "err");
+      setMsg(t("msg.floatEven"), "err");
       return;
     }
     if (isRegisterKind(k) && mode === "float64" && cnt % 4 !== 0) {
-      setMsg("Для double число слов кратно 4", "err");
+      setMsg(t("msg.doubleMul4"), "err");
       return;
     }
 
-    if (!silent) setMsg("Запрос…");
+    if (!silent) setMsg(t("msg.requesting"));
     try {
       const r = await fetch(readPath(k, addr, cnt));
       if (!r.ok) throw new Error(r.status + " " + r.statusText);
       const data = await r.json();
       if (!Array.isArray(data)) {
-        setMsg("Ответ API: нужен JSON-массив значений (проверьте URL и /api/v1)", "err");
+        setMsg(t("msg.apiNotArray"), "err");
         tbody.innerHTML = "";
         matrixRowsHint = "";
         updateAreaHint();
@@ -402,12 +412,15 @@
         lastRead.bools = data.map(Boolean);
       }
       renderTable(mode, wo);
-      const unit = isBoolKind(k) ? "бит" : "сл.";
+      const unit = isBoolKind(k) ? t("unit.bit") : t("unit.word");
       if (silent) {
         const sec = Math.round(pollIntervalMs() / 1000);
-        setMsg("Авто " + sec + "с · " + data.length + " " + unit, "ok");
+        setMsg(
+          t("msg.auto", { sec, n: data.length, unit }),
+          "ok"
+        );
       } else {
-        setMsg("Готово · " + data.length + " " + unit, "ok");
+        setMsg(t("msg.done", { n: data.length, unit }), "ok");
       }
     } catch (e) {
       setMsg(String(e.message || e), "err");
@@ -589,7 +602,10 @@
           cb.className = "bit-cb";
           cb.dataset.bit = String(b);
           cb.checked = ((word >> b) & 1) !== 0;
-          cb.title = docAddrLabel(k, abs) + " · бит " + b;
+          cb.title = t("cell.bit", {
+            doc: docAddrLabel(k, abs),
+            b,
+          });
           cb.addEventListener("change", () => writeBitmaskRow(k, abs, tr));
           td.appendChild(cb);
           tr.appendChild(td);
@@ -602,7 +618,7 @@
 
     if (mode === "int32") {
       if (regs.length % 2 !== 0) {
-        errMatrixRow(mode, k, "Нечётное число слов — переключите формат или прочитайте чётную область.");
+        errMatrixRow(mode, k, t("msg.matrixOdd"));
         return;
       }
       const nPairs = regs.length / 2;
@@ -658,7 +674,7 @@
 
     if (mode === "float32") {
       if (regs.length % 2 !== 0) {
-        errMatrixRow(mode, k, "Нечётное число слов для float.");
+        errMatrixRow(mode, k, t("msg.matrixFloatOdd"));
         return;
       }
       const nPairs = regs.length / 2;
@@ -695,7 +711,7 @@
           inp.spellcheck = false;
           inp.value = formatFloatCell(f);
           inp.className = "cell-inp cell-inp-wide cell-inp-float";
-          inp.title = "Float32 (IEEE754 BE), десятичный разделитель . или ,";
+          inp.title = t("inp.float32Title");
           bindAutoSaveNumber(inp, () =>
             writeDecodedMulti(k, abs, "float32", wo, inp)
           );
@@ -716,7 +732,7 @@
 
     if (mode === "float64") {
       if (regs.length % 4 !== 0) {
-        errMatrixRow(mode, k, "Число слов должно быть кратно 4 для double.");
+        errMatrixRow(mode, k, t("msg.matrixDoubleMul4"));
         return;
       }
       const nQuads = regs.length / 4;
@@ -752,7 +768,7 @@
           inp.spellcheck = false;
           inp.value = formatFloatCell(f);
           inp.className = "cell-inp cell-inp-float64 cell-inp-float";
-          inp.title = "Float64 BE (4 слова), десятичный разделитель . или ,";
+          inp.title = t("inp.float64Title");
           bindAutoSaveNumber(inp, () =>
             writeDecodedMulti(k, abs, "float64", wo, inp)
           );
@@ -791,11 +807,17 @@
       if (cb.checked) v |= 1 << b;
     });
     v &= 0xffff;
-    setMsg("Запись…");
+    setMsg(t("msg.writing"));
     try {
       const r = await fetch(writeOnePath(k, abs, v), { method: "POST" });
       if (!r.ok) throw new Error(r.status + " " + r.statusText);
-      setMsg("Записано · " + docAddrLabel(k, abs) + " = 0x" + fmtHexU16(v), "ok");
+      setMsg(
+        t("msg.written", {
+          addr: docAddrLabel(k, abs),
+          hex: fmtHexU16(v),
+        }),
+        "ok"
+      );
       await doRead();
     } catch (e) {
       setMsg(String(e.message || e), "err");
@@ -813,7 +835,7 @@
         n < -2147483648 ||
         n > 2147483647
       ) {
-        setMsg("int32: целое от −2147483648 до 2147483647", "err");
+        setMsg(t("msg.int32Range"), "err");
         return;
       }
       const u32 = n >>> 0;
@@ -821,21 +843,21 @@
     } else if (mode === "float32") {
       const n = parseFloatLocale(raw);
       if (!Number.isFinite(n)) {
-        setMsg("Некорректное число float", "err");
+        setMsg(t("msg.badFloat"), "err");
         return;
       }
       words = float32ToRegs(n, wo);
     } else if (mode === "float64") {
       const n = parseFloatLocale(raw);
       if (!Number.isFinite(n)) {
-        setMsg("Некорректное число double", "err");
+        setMsg(t("msg.badDouble"), "err");
         return;
       }
       words = float64ToRegs(n);
     } else {
       return;
     }
-    setMsg("Запись…");
+    setMsg(t("msg.writing"));
     try {
       const r = await fetch(batchPath(k, abs), {
         method: "POST",
@@ -847,7 +869,7 @@
         words.length === 2
           ? docAddrLabel(k, abs) + "…" + docAddrLabel(k, abs + 1)
           : docAddrLabel(k, abs) + "…" + docAddrLabel(k, abs + 3);
-      setMsg("Записано · " + span, "ok");
+      setMsg(t("msg.writtenSpan", { span }), "ok");
       await doRead();
     } catch (e) {
       setMsg(String(e.message || e), "err");
@@ -861,28 +883,28 @@
     } else {
       let n = Number(inputEl.value);
       if (!Number.isFinite(n)) {
-        setMsg("Некорректное число", "err");
+        setMsg(t("msg.badNumber"), "err");
         return;
       }
       if (int16Mode) {
         if (n < -32768 || n > 32767) {
-          setMsg("int16: −32768…32767", "err");
+          setMsg(t("msg.int16Range"), "err");
           return;
         }
         val = n < 0 ? n + 65536 : n;
       } else {
         if (n < 0 || n > 65535 || !Number.isInteger(n)) {
-          setMsg("uint16: 0…65535", "err");
+          setMsg(t("msg.uint16Range"), "err");
           return;
         }
         val = n;
       }
     }
-    setMsg("Запись…");
+    setMsg(t("msg.writing"));
     try {
       const r = await fetch(writeOnePath(k, abs, val), { method: "POST" });
       if (!r.ok) throw new Error(r.status + " " + r.statusText);
-      setMsg("Записано · " + docAddrLabel(k, abs), "ok");
+      setMsg(t("msg.writtenAddr", { addr: docAddrLabel(k, abs) }), "ok");
       await doRead();
     } catch (e) {
       setMsg(String(e.message || e), "err");
@@ -1047,14 +1069,11 @@
     const u = getMcpUrlForConfig();
     const p = getMcpPublicPort();
     const safe = u.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-    el.innerHTML =
-      "Текущий URL для Cursor: <code class=\"mcp-ai-code\">" +
-      safe +
-      "</code> · хост как у этой страницы (<code>" +
-      getMcpPublicHost().replace(/</g, "&lt;") +
-      "</code>), порт <strong>" +
-      p +
-      "</strong> — из <code>?mcpPort=…</code> или <strong>18081</strong> по умолчанию.";
+    el.innerHTML = t("mcp.urlLine", {
+      url: safe,
+      host: getMcpPublicHost().replace(/</g, "&lt;"),
+      port: p,
+    });
   }
 
   const mcpAiBtn = document.getElementById("mcpAiBtn");
@@ -1171,4 +1190,23 @@
       window.visualViewport.addEventListener("scroll", scheduleMcpPanelPosition);
     }
   }
+
+  window.addEventListener("apcs-lang-change", function () {
+    document.title = t("app.title");
+    syncCntLimits();
+    if (addrEl) addrEl.title = t("addr.title");
+    if (pollIntervalSecEl) {
+      pollIntervalSecEl.title = t("pollInterval.title");
+      pollIntervalSecEl.setAttribute("aria-label", t("pollInterval.aria"));
+    }
+    updateAreaHint();
+    updateMcpUrlLine();
+    const k = kind.value;
+    if (lastRead.values && lastRead.values.length) {
+      renderTable(displayMode.value, wordOrder32.value);
+    } else {
+      renderMatrixHeader(displayMode.value, k);
+      syncWordOrderVisibility();
+    }
+  });
 })();

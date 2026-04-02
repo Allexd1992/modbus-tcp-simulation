@@ -1,0 +1,19 @@
+{
+  "name": "Modbus TCP Server Simulation",
+  "short_name": "Modbus Sim",
+  "description": "Modbus TCP simulator: web UI, REST, Swagger, MCP",
+  "start_url": "/ui/",
+  "scope": "/ui/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f0f1a",
+  "theme_color": "#16213e",
+  "icons": [
+    {
+      "src": "/ui/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
