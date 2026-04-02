@@ -1,22 +1,27 @@
-use std::{sync::{Arc, Mutex}};
 use std::env;
+use std::sync::{Arc, Mutex};
 mod service;
-use rocket::{ Config};
 use crate::service::{
+    http::{api::Api, context::get_rocket},
     mcp::run_mcp_http_server,
     modbus::{builder::server_build, store::Store},
-    http::{ context::get_rocket, api::Api},
 };
-
+use rocket::Config;
 
 #[tokio::main]
 
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let registry = Arc::new(Mutex::new(Store::new()));
-    let port = env::var("MB_SERVER_PORT").unwrap_or_else(|_| "502".to_string()).parse::<u16>().unwrap();
+    let port = env::var("MB_SERVER_PORT")
+        .unwrap_or_else(|_| "502".to_string())
+        .parse::<u16>()
+        .unwrap();
     let addr = format!("0.0.0.0:{}", port);
 
-    let web_port = env::var("WEB_SERVER_PORT").unwrap_or_else(|_| "9090".to_string()).parse::<u16>().unwrap();
+    let web_port = env::var("WEB_SERVER_PORT")
+        .unwrap_or_else(|_| "9090".to_string())
+        .parse::<u16>()
+        .unwrap();
     let rocket_config = Config {
         address: "0.0.0.0".parse()?,
         port: web_port,
@@ -53,4 +58,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

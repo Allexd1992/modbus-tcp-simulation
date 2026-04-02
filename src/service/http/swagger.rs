@@ -1,7 +1,7 @@
-use crate::service::http::{api as api};
-use utoipa::{OpenApi};
+use crate::service::http::api;
+use utoipa::OpenApi;
 
-use super::types::{RequestRegister, RequestCoil};
+use super::types::{RequestCoil, RequestRegister};
 
 #[derive(OpenApi)]
 #[openapi(

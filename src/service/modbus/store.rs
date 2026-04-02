@@ -1,8 +1,9 @@
-use std::{sync::{Arc, Mutex}, collections::HashMap};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use super::interfaces::IRegistry;
-
-
 
 pub struct Store {
     input_registers: Arc<Mutex<HashMap<u16, u16>>>,
@@ -10,8 +11,6 @@ pub struct Store {
     discrete_coils: Arc<Mutex<HashMap<u16, bool>>>,
     discrete_input: Arc<Mutex<HashMap<u16, bool>>>,
 }
-
-
 
 impl Store {
     pub fn new() -> Self {
@@ -40,55 +39,50 @@ impl Store {
     }
 }
 
-impl IRegistry for Store{
-fn holding_registers_read(&self, addr: u16, cnt: u16) -> Result<Vec<u16>, std::io::Error> {
-    let response_values = registers_read(Arc::clone(&self.holding_registers), addr, cnt)?;
-    Ok(response_values)
+impl IRegistry for Store {
+    fn holding_registers_read(&self, addr: u16, cnt: u16) -> Result<Vec<u16>, std::io::Error> {
+        let response_values = registers_read(Arc::clone(&self.holding_registers), addr, cnt)?;
+        Ok(response_values)
+    }
+
+    fn input_registers_read(&self, addr: u16, cnt: u16) -> Result<Vec<u16>, std::io::Error> {
+        let response_values = registers_read(Arc::clone(&self.input_registers), addr, cnt)?;
+        Ok(response_values)
+    }
+
+    fn discrete_coils_read(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, std::io::Error> {
+        let response_values = coils_read(Arc::clone(&self.discrete_coils), addr, cnt)?;
+        Ok(response_values)
+    }
+
+    fn discrete_input_read(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, std::io::Error> {
+        let response_values = coils_read(Arc::clone(&self.discrete_input), addr, cnt)?;
+        Ok(response_values)
+    }
+
+    fn holding_registers_write(&mut self, addr: u16, values: &[u16]) -> Result<(), std::io::Error> {
+        registers_write(Arc::clone(&self.holding_registers), addr, values)?;
+        Ok(())
+    }
+
+    fn input_registers_write(&mut self, addr: u16, values: &[u16]) -> Result<(), std::io::Error> {
+        registers_write(Arc::clone(&self.input_registers), addr, values)?;
+        Ok(())
+    }
+
+    fn discrete_coil_write(&mut self, addr: u16, values: &[bool]) -> Result<(), std::io::Error> {
+        coils_write(Arc::clone(&self.discrete_coils), addr, values)?;
+        Ok(())
+    }
+
+    fn discrete_input_write(&mut self, addr: u16, values: &[bool]) -> Result<(), std::io::Error> {
+        coils_write(Arc::clone(&self.discrete_input), addr, values)?;
+        Ok(())
+    }
 }
-
-fn input_registers_read(&self, addr: u16, cnt: u16) -> Result<Vec<u16>, std::io::Error> {
-    let response_values = registers_read(Arc::clone(&self.input_registers), addr, cnt)?;
-    Ok(response_values)
-}
-
-fn discrete_coils_read(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, std::io::Error> {
-    let response_values = coils_read(Arc::clone(&self.discrete_coils), addr, cnt)?;
-    Ok(response_values)
-}
-
-fn discrete_input_read(&self, addr: u16, cnt: u16) -> Result<Vec<bool>, std::io::Error> {
-    let response_values = coils_read(Arc::clone(&self.discrete_input), addr, cnt)?;
-    Ok(response_values)
-}
-
-
-
-fn holding_registers_write( &mut self, addr: u16, values: &[u16]) -> Result<(), std::io::Error> {
-    registers_write(Arc::clone(&self.holding_registers), addr, values)?;
-    Ok(())
-}
-
-fn input_registers_write( &mut self, addr: u16, values: &[u16]) -> Result<(), std::io::Error> {
-    registers_write(Arc::clone(&self.input_registers), addr, values)?;
-    Ok(())
-}
-
-fn discrete_coil_write(&mut self, addr: u16, values: &[bool]) -> Result<(), std::io::Error> {
-   coils_write(Arc::clone(&self.discrete_coils), addr, values)?;
-    Ok(())
-}
-
-fn discrete_input_write(&mut self, addr: u16, values: &[bool]) -> Result<(), std::io::Error> {
-    coils_write(Arc::clone(&self.discrete_input), addr, values)?;
-    Ok(())
-}
-
-
-}
-
 
 /// Helper function implementing reading registers from a HashMap.
- fn registers_read(
+fn registers_read(
     registers: Arc<Mutex<HashMap<u16, u16>>>,
     addr: u16,
     cnt: u16,
@@ -116,8 +110,6 @@ fn coils_read(
     addr: u16,
     cnt: u16,
 ) -> Result<Vec<bool>, std::io::Error> {
-
-
     let mut response_values = vec![false; cnt.into()];
     for i in 0..cnt {
         let coil_addr = addr + i;
@@ -139,7 +131,7 @@ fn coils_read(
 /// Write a holding register. Used by both the write single register
 /// and write multiple registers requests.
 fn registers_write(
-    registers: Arc<Mutex< HashMap<u16, u16>>>,
+    registers: Arc<Mutex<HashMap<u16, u16>>>,
     addr: u16,
     values: &[u16],
 ) -> Result<(), std::io::Error> {
@@ -160,7 +152,7 @@ fn registers_write(
     Ok(())
 }
 
- fn coils_write(
+fn coils_write(
     coils: Arc<Mutex<HashMap<u16, bool>>>,
     addr: u16,
     values: &[bool],

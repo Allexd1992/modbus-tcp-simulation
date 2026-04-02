@@ -1,13 +1,9 @@
 use std::sync::{Arc, Mutex};
 
 use rmcp::{
-    ErrorData, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::{Implementation, ServerCapabilities, ServerInfo},
-    schemars,
-    tool,
-    tool_handler,
-    tool_router,
+    schemars, tool, tool_handler, tool_router, ErrorData, ServerHandler,
 };
 use serde::Deserialize;
 
@@ -229,10 +225,7 @@ impl ServerHandler for ModbusMcpServer {
     }
 }
 
-pub async fn run_mcp_http_server(
-    store: Arc<Mutex<Store>>,
-    port: u16,
-) -> anyhow::Result<()> {
+pub async fn run_mcp_http_server(store: Arc<Mutex<Store>>, port: u16) -> anyhow::Result<()> {
     use rmcp::transport::streamable_http_server::{
         session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
     };
