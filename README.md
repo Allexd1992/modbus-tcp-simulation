@@ -1,326 +1,148 @@
-# Modbus TCP Server Simulator
+# Modbus TCP Server Simulation
 
-Rust-приложение, реализующее Modbus TCP сервер с REST API, Swagger документацией и **MCP** (Model Context Protocol) по HTTP для подключения ИИ-клиентов (например Cursor).
+[![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim)
 
-## 🚀 Быстрый запуск
+Симулятор Modbus TCP с **единым in-memory хранилищем**: веб-интерфейс, **REST API**, **Swagger** и **MCP (Model Context Protocol)** по HTTP для клиентов вроде Cursor. Написано на Rust (Rocket, tokio-modbus, rmcp).
 
-### Вариант 1: Docker Compose (рекомендуется)
+## Возможности
+
+- **Modbus TCP** — holding/input registers, coils и discrete inputs.
+- **REST** — те же данные, что и по Modbus и MCP.
+- **Веб-UI** (`/ui/`) — матрица регистров, форматы UInt16/Int32/float/double, битовая маска, автообновление с настраиваемым интервалом, подсказка MCP с примером `mcp.json` и скачиванием.
+- **MCP** — Streamable HTTP на пути `/mcp`, инструменты `modbus_read_holding_registers`, `modbus_write_holding_registers` и др.
+
+## Требования
+
+- Для сборки: Rust toolchain.
+- Для контейнера: Docker (или только образ с Docker Hub).
+
+## Быстрый старт
+
+### Образ Docker Hub (рекомендуется)
+
+Текущий тег: **`2.0.0`**.
 
 ```bash
-# Запуск из Docker Hub
-docker-compose up -d
+docker pull allexd2010/modbus-server-sim:2.0.0
 
-# Или с локальной сборкой для разработки
-docker-compose -f docker-compose.dev.yml up -d
+docker run -d --name modbus-sim \
+  -p 9090:9090 \
+  -p 502:502 \
+  -p 18081:8081 \
+  allexd2010/modbus-server-sim:2.0.0
 ```
 
-### Вариант 2: Локальная сборка
+| На хосте | В контейнере | Назначение |
+|----------|----------------|------------|
+| 9090 | 9090 | HTTP: REST, Swagger, `/ui/` |
+| 502 | 502 | Modbus TCP |
+| **18081** | **8081** | MCP (`http://<хост>:18081/mcp`) |
+
+Почему **18081** снаружи: внутри процесса MCP слушает порт из `MCP_SERVER_PORT` (по умолчанию **8081**). Проброс `18081:8081` совпадает с подсказкой в веб-UI для Cursor. Если нужен MCP на хосте как **8081**, используйте `-p 8081:8081`.
+
+Локальная сборка образа:
 
 ```bash
-# Сборка и запуск
-cargo run
-
-# Или сборка релиза
-cargo build --release
-./target/release/modbus_tcp_server_rust
+docker build -t allexd2010/modbus-server-sim:2.0.0 .
 ```
 
-### Вариант 3: PowerShell скрипт
+### Docker Compose
 
-```powershell
-# Запуск из Docker Hub
-.\docker-compose.ps1 start
-
-# Запуск в режиме разработки
-.\docker-compose.ps1 dev
-
-# Остановка
-.\docker-compose.ps1 stop
-
-# Просмотр логов
-.\docker-compose.ps1 logs
+```bash
+docker compose up -d
 ```
 
-## 📊 Доступные сервисы
+Порты и образ задаются в `docker-compose.yml`.
 
-После запуска доступны следующие сервисы:
+### Без Docker
 
-| Сервис | URL | Описание |
-|--------|-----|----------|
-| **Web API** | http://localhost:9090 | REST API для управления Modbus регистрами |
-| **Swagger UI** | http://localhost:9090/api/v1/swagger/ | Интерактивная документация API |
-| **Modbus TCP** | localhost:5021 | Modbus TCP сервер |
-| **MCP (HTTP)** | http://localhost:8081/mcp | Streamable HTTP, те же регистры/coils, что и у REST (см. ниже) |
-| **Веб-UI регистров** | http://localhost:9090/ui/ | Статическая страница: чтение/запись через REST (тот же store) |
-
-При локальном `cargo run` без Docker: Web API по умолчанию на **9090**, Modbus на **502**, MCP по умолчанию на **8081** — см. переменные окружения. UI: **`http://localhost:<WEB_SERVER_PORT>/ui/`**.
-
-## 🔌 Подключение к Modbus TCP
-
-### Параметры подключения:
-- **IP адрес**: `localhost` или `127.0.0.1`
-- **Порт**: `5021` (или `502` при локальном запуске)
-- **Unit ID**: `1` (по умолчанию)
-
-### Пример подключения с помощью Python:
-
-```python
-from pymodbus.client import ModbusTcpClient
-
-# Подключение к серверу
-client = ModbusTcpClient('localhost', 5021)
-
-if client.connect():
-    print("✅ Подключение успешно!")
-    
-    # Чтение holding registers
-    result = client.read_holding_registers(0, 10)
-    print(f"Holding registers: {result.registers}")
-    
-    # Запись в holding register
-    client.write_register(0, 12345)
-    
-    client.close()
-else:
-    print("❌ Ошибка подключения!")
+```bash
+cargo run --release
 ```
 
-### Пример подключения с помощью Node.js:
+По умолчанию: веб **9090**, Modbus **502**, MCP **8081** (см. переменные окружения ниже). UI: `http://127.0.0.1:9090/ui/`.
 
-```javascript
-const ModbusRTU = require('modbus-serial');
+## Сервисы после запуска
 
-const client = new ModbusRTU();
-client.connectTCP("localhost", { port: 5021 });
+| Что | URL / адрес |
+|-----|-------------|
+| Веб-UI | `http://<хост>:9090/ui/` |
+| Swagger | `http://<хост>:9090/api/v1/swagger/` |
+| REST | базовый префикс `/api/v1/` |
+| Modbus TCP | `<хост>:502` (или порт из `MB_SERVER_PORT` и проброса Docker) |
+| MCP | `http://<хост>:<порт MCP на хосте>/mcp` |
 
-client.readHoldingRegisters(0, 10)
-    .then(data => {
-        console.log("Holding registers:", data.data);
-    })
-    .catch(err => {
-        console.error("Ошибка:", err);
-    });
-```
+## Веб-интерфейс
 
-## 📖 Swagger UI - Интерактивная документация
+- Вкладки: holding / input / coils / discrete inputs.
+- Поля **Сдвиг** и **Количество** задают окно чтения (до 256 слов запросом; таблица показывает ограниченное число строк — см. подсказку внизу).
+- **Авто** — периодическое чтение; интервал в секундах; при фокусе в ячейке автообновление не перезаписывает ввод.
+- Кнопка **AI** — текст про MCP, текущий URL для Cursor, скачивание `mcp.json` (хост как у страницы, порт **18081** по умолчанию или `?mcpPort=` в URL страницы).
 
-### Доступ к Swagger UI:
+## Адреса Modbus и документация
 
-1. Откройте браузер
-2. Перейдите по адресу: **http://localhost:9090/api/v1/swagger/**
-3. Вы увидите интерактивную документацию API
+В протоколе и API используется **смещение с нуля** (первый holding — адрес **0**). Соответствие «документации» Modicon: holding **40001** → смещение **0**, **40021** → **20**.
 
-### Основные разделы API:
+## REST API (кратко)
 
-#### 🔧 Управление Holding Registers
-- `GET /api/v1/holding-registers/{addr}/{cnt}` - Чтение регистров хранения
-- `POST /api/v1/holding-register/{addr}/{data}` - Запись в регистр хранения
-- `POST /api/v1/holding-registers/{addr}` - Запись нескольких регистров
+Все маршруты под `/api/v1/`; примеры для holding:
 
-#### 📊 Управление Input Registers
-- `GET /api/v1/input-registers/{addr}/{cnt}` - Чтение входных регистров
-- `POST /api/v1/input-register/{addr}/{data}` - Запись в входной регистр
-- `POST /api/v1/input-registers/{addr}` - Запись нескольких входных регистров
+- `GET /api/v1/holding-registers/{addr}/{cnt}` — чтение
+- `POST /api/v1/holding-register/{addr}/{data}` — одно слово
+- `POST /api/v1/holding-registers/{addr}` — тело JSON `{"data":[…]}`
 
-#### ⚡ Управление Discrete Coils
-- `GET /api/v1/discrete-coils/{addr}/{cnt}` - Чтение дискретных катушек
-- `POST /api/v1/discrete-coil/{addr}/{data}` - Запись в дискретную катушку
-- `POST /api/v1/discrete-coils/{addr}` - Запись нескольких катушек
+Аналогично для input, coils и discrete — см. Swagger.
 
-#### 🔌 Управление Discrete Inputs
-- `GET /api/v1/discrete-inputs/{addr}/{cnt}` - Чтение дискретных входов
-- `POST /api/v1/discrete-input/{addr}/{data}` - Запись в дискретный вход
-- `POST /api/v1/discrete-inputs/{addr}` - Запись нескольких дискретных входов
+## MCP (Cursor и др.)
 
-### Примеры использования Swagger UI:
+- Транспорт: **Streamable HTTP**, endpoint **`/mcp`**.
+- Тот же store, что у REST.
+- В инструментах параметр **`addr`** — **смещение по протоколу**, не номер 40001.
 
-#### 1. Чтение Holding Registers
-1. Найдите endpoint `GET /api/v1/holding-registers/{addr}/{cnt}`
-2. Нажмите "Try it out"
-3. Введите параметры:
-   - `addr`: `0` (начальный адрес)
-   - `cnt`: `10` (количество регистров)
-4. Нажмите "Execute"
-5. Получите результат в формате JSON
-
-#### 2. Запись в Holding Register
-1. Найдите endpoint `POST /api/v1/holding-register/{addr}/{data}`
-2. Нажмите "Try it out"
-3. Введите параметры:
-   - `addr`: `0` (адрес регистра)
-   - `data`: `12345` (значение для записи)
-4. Нажмите "Execute"
-5. Получите подтверждение записи
-
-#### 3. Запись нескольких регистров
-1. Найдите endpoint `POST /api/v1/holding-registers/{addr}`
-2. Нажмите "Try it out"
-3. Введите параметры:
-   - `addr`: `0` (начальный адрес)
-   - Request body: `[100, 200, 300, 400, 500]`
-4. Нажмите "Execute"
-
-## 🤖 MCP (Model Context Protocol)
-
-Отдельный HTTP-сервер (Axum) с транспортом **Streamable HTTP** по пути **`/mcp`**. Доступ к данным тем же in-memory хранилищем, что и REST API: чтение/запись holding/input registers и discrete coils/inputs через **tools** (имена вида `modbus_read_holding_registers`, `modbus_write_holding_registers` и т.д.).
-
-### Адрес и переменная окружения
-
-| Параметр | Описание |
-|----------|----------|
-| **Базовый URL** | `http://<хост>:<MCP_SERVER_PORT>/mcp` |
-| **`MCP_SERVER_PORT`** | Порт MCP-сервера (по умолчанию **`8081`**). Значение **`0`** — MCP не поднимается. |
-
-В логах при старте будет строка с фактическим значением `MCP_SERVER_PORT`.
-
-### Подключение в Cursor
-
-В проекте или в пользовательских настройках добавьте MCP-сервер с типом **Streamable HTTP** и URL, например:
-
-`http://127.0.0.1:8081/mcp`
-
-Либо файл **`.cursor/mcp.json`** в корне репозитория:
+Пример `mcp.json` (глобально `%USERPROFILE%\.cursor\mcp.json` или проект `.cursor/mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "modbus-apcs": {
-      "url": "http://127.0.0.1:8081/mcp"
+    "modbus-tcp-sim": {
+      "url": "http://127.0.0.1:18081/mcp"
     }
   }
 }
 ```
 
-После изменения конфигурации перезапустите Cursor. Сервер приложения при этом должен быть запущен, и порт MCP не должен совпадать с конфликтующими сервисами.
+При локальном `cargo run` без Docker обычно: `http://127.0.0.1:8081/mcp`. После смены конфигурации Cursor нужен **полный перезапуск** Cursor.
 
-### Docker
+Отключить MCP: `MCP_SERVER_PORT=0`.
 
-В `docker-compose.yml` порт **8081** проброшен на хост; задайте при необходимости `MCP_SERVER_PORT` в `environment`.
+## Переменные окружения
 
----
+| Переменная | По умолчанию | Описание |
+|------------|----------------|----------|
+| `WEB_SERVER_PORT` | `9090` | HTTP (REST, Swagger, статика `/ui`) |
+| `MB_SERVER_PORT` | `502` | Modbus TCP |
+| `MCP_SERVER_PORT` | `8081` | Порт MCP внутри процесса; **`0`** — не поднимать MCP |
+| `RUST_LOG` | (нет) | Уровень логирования, например `info` |
 
-## 🛠️ Переменные окружения
 
-| Переменная | Значение по умолчанию | Описание |
-|------------|----------------------|----------|
-| `WEB_SERVER_PORT` | `9090` | Порт для Web API, Swagger и `/ui` |
-| `MB_SERVER_PORT` | `502` | Порт для Modbus TCP |
-| `MCP_SERVER_PORT` | `8081` | Порт MCP (Streamable HTTP на `/mcp`); `0` — отключить MCP |
-| `RUST_LOG` | `info` | Уровень логирования |
 
-## 📋 Команды управления
+Порт замените на тот, что задан в `MB_SERVER_PORT` и проброшен с хоста (по умолчанию **502**).
 
-### Docker Compose команды:
+## Устранение неполадок
 
-```bash
-# Запуск
-docker-compose up -d
+- **Порт занят** — проверьте `netstat` / Диспетчер задач; смените проброс или переменные окружения.
+- **MCP в Cursor не отвечает** — убедитесь, что URL указывает на **хост и порт**, куда проброшен контейнер (часто **18081**, а не 8081).
+- **Пустой или не тот ответ в UI** — API должен возвращать **JSON-массив**; при прокси и HTML-ответе таблица не заполнится.
 
-# Остановка
-docker-compose down
 
-# Просмотр логов
-docker-compose logs -f
 
-# Статус сервисов
-docker-compose ps
+- Docker Hub: `allexd2010/modbus-server-sim`
+- Теги: например **`2.0.0`**
 
-# Перезапуск
-docker-compose restart
-```
+## Лицензия
 
-### PowerShell скрипт команды:
-
-```powershell
-# Запуск из Docker Hub
-.\docker-compose.ps1 start
-
-# Запуск в режиме разработки
-.\docker-compose.ps1 dev
-
-# Остановка
-.\docker-compose.ps1 stop
-
-# Просмотр логов
-.\docker-compose.ps1 logs
-
-# Статус
-.\docker-compose.ps1 status
-
-# Сборка и загрузка образа
-.\docker-compose.ps1 build
-```
-
-## 🔍 Мониторинг и отладка
-
-### Просмотр логов:
-```bash
-# Docker Compose логи
-docker-compose logs -f
-
-# Логи конкретного контейнера
-docker logs modbus-tcp-server
-
-# PowerShell скрипт
-.\docker-compose.ps1 logs
-```
-
-### Проверка статуса:
-```bash
-# Статус контейнеров
-docker-compose ps
-
-# Детальная информация
-docker-compose ps -a
-```
-
-### Health Check:
-Сервис автоматически проверяет доступность Swagger UI каждые 30 секунд.
-
-## 🐛 Устранение неполадок
-
-### Проблема: Порт уже занят
-```bash
-# Проверьте, какие процессы используют порты
-netstat -ano | findstr :9090
-netstat -ano | findstr :5021
-netstat -ano | findstr :8081
-
-# Остановите конфликтующие процессы или измените порты в docker-compose.yml и переменные WEB_SERVER_PORT / MB_SERVER_PORT / MCP_SERVER_PORT
-```
-
-### Проблема: Docker не найден
-```powershell
-# Добавьте Docker в PATH
-$env:PATH += ";C:\Program Files\Docker\Docker\resources\bin"
-```
-
-### Проблема: Контейнер не запускается
-```bash
-# Проверьте логи
-docker-compose logs
-
-# Запустите в интерактивном режиме
-docker-compose up
-```
-
-## 📚 Дополнительные ресурсы
-
-- **Docker Hub**: https://hub.docker.com/r/allexd2010/modbus-server-sim
-- **GitHub**: [Репозиторий проекта]
-- **Modbus Protocol**: https://modbus.org/
-- **Swagger Documentation**: https://swagger.io/
-
-## 🤝 Поддержка
-
-При возникновении проблем:
-1. Проверьте логи: `.\docker-compose.ps1 logs`
-2. Убедитесь, что порты не заняты
-3. Проверьте, что Docker запущен
-4. Создайте issue в репозитории проекта
+MIT
 
 ---
 
-**Версия**: 1.0.0  
-**Автор**: allexd2010  
-**Лицензия**: MIT
+**Версия документации:** соответствует релизу ветки и образу **2.0.0**.
