@@ -1,7 +1,8 @@
 # CI: GitHub Actions; Gitea Actions uses this path if `.gitea/workflows` is absent.
 # Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
-# Repo secrets: VAULT_ADDR, VAULT_TOKEN. Optional: ARTIFACTS_BASE_URL for internal Vault CLI mirror;
-# if unset, CI downloads Vault 1.15.4 from releases.hashicorp.com (GitHub.com / no private network).
+# Repo secrets: VAULT_ADDR, VAULT_TOKEN. Optional: ARTIFACTS_BASE_URL (Vault CLI mirror).
+# Optional: REGISTRY_CA_CERT — PEM of the CA that signs git.mylocaldomain.online (fixes docker TLS
+# "certificate signed by unknown authority" on runners without your corporate root in the trust store).
 name: CI
 
 on:
@@ -108,6 +109,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name != 'pull_request'
+    env:
+      REGISTRY_HOST: git.mylocaldomain.online
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -145,9 +148,22 @@ jobs:
             jq -r '.data.data | to_entries[] | "\(.key | ascii_upcase)=\(.value)"' >> $GITHUB_ENV
           echo "Secrets loaded."
 
+      - name: Trust Container Registry TLS (internal CA)
+        env:
+          REGISTRY_CA_CERT: ${{ secrets.REGISTRY_CA_CERT }}
+        run: |
+          if [ -z "${REGISTRY_CA_CERT:-}" ]; then
+            echo "REGISTRY_CA_CERT is not set. If docker login fails with x509 unknown authority,"
+            echo "add repo secret REGISTRY_CA_CERT with the PEM of the CA that signs ${REGISTRY_HOST}."
+            exit 0
+          fi
+          sudo mkdir -p "/etc/docker/certs.d/${REGISTRY_HOST}"
+          printf '%s\n' "$REGISTRY_CA_CERT" | sudo tee "/etc/docker/certs.d/${REGISTRY_HOST}/ca.crt" >/dev/null
+          echo "Installed registry CA under /etc/docker/certs.d/${REGISTRY_HOST}/ca.crt"
+
       - name: Login to Gitea Container Registry
         run: |
-          echo "$TOKEN" | docker login git.mylocaldomain.online -u "$USER" --password-stdin
+          echo "$TOKEN" | docker login "${REGISTRY_HOST}" -u "$USER" --password-stdin
 
       - name: Extract metadata
         id: meta
@@ -172,28 +188,24 @@ jobs:
 
       - name: Build and push (branch / test)
         if: steps.meta.outputs.is_release != 'true'
-        env:
-          REGISTRY: git.mylocaldomain.online
         run: |
           REPO="${{ steps.meta.outputs.repo }}"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ${REGISTRY}/${REPO}/modbus-server-sim:sha-${SHORT_SHA} \
-            -t ${REGISTRY}/${REPO}/modbus-server-sim:test \
+            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:sha-${SHORT_SHA} \
+            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:test \
             --push .
 
       - name: Build and push (release tag)
         if: steps.meta.outputs.is_release == 'true'
-        env:
-          REGISTRY: git.mylocaldomain.online
         run: |
           REPO="${{ steps.meta.outputs.repo }}"
           VERSION="${{ steps.meta.outputs.version }}"
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ${REGISTRY}/${REPO}/modbus-server-sim:latest \
-            -t ${REGISTRY}/${REPO}/modbus-server-sim:${VERSION} \
+            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:latest \
+            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:${VERSION} \
             --push .
 
   ci-success:
