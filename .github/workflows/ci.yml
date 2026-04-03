@@ -1,5 +1,6 @@
 # CI: GitHub Actions; Gitea Actions uses this path if `.gitea/workflows` is absent.
 # Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
+# Repo secrets: ARTIFACTS_BASE_URL (e.g. http://10.15.5.12:4646), VAULT_ADDR, VAULT_TOKEN.
 name: CI
 
 on:
@@ -114,8 +115,10 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Install Vault CLI
+        env:
+          ARTIFACTS_BASE_URL: ${{ secrets.ARTIFACTS_BASE_URL }}
         run: |
-          wget -qO vault.zip "http://10.15.5.12:4646/api/v1/buckets/packet/objects/download?prefix=vault_1.15.4_linux_amd64.zip"
+          wget -qO vault.zip "${ARTIFACTS_BASE_URL}/api/v1/buckets/packet/objects/download?prefix=vault_1.15.4_linux_amd64.zip"
           unzip -q vault.zip
           sudo mv vault /usr/local/bin/
           rm vault.zip
