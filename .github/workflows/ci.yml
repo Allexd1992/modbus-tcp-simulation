@@ -1,6 +1,7 @@
 # CI: GitHub Actions; Gitea Actions uses this path if `.gitea/workflows` is absent.
 # Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
-# Repo secrets: ARTIFACTS_BASE_URL (e.g. http://10.15.5.12:4646), VAULT_ADDR, VAULT_TOKEN.
+# Repo secrets: VAULT_ADDR, VAULT_TOKEN. Optional: ARTIFACTS_BASE_URL for internal Vault CLI mirror;
+# if unset, CI downloads Vault 1.15.4 from releases.hashicorp.com (GitHub.com / no private network).
 name: CI
 
 on:
@@ -118,7 +119,16 @@ jobs:
         env:
           ARTIFACTS_BASE_URL: ${{ secrets.ARTIFACTS_BASE_URL }}
         run: |
-          wget -qO vault.zip "${ARTIFACTS_BASE_URL}/api/v1/buckets/packet/objects/download?prefix=vault_1.15.4_linux_amd64.zip"
+          set -euo pipefail
+          VAULT_VER="1.15.4"
+          if [ -n "${ARTIFACTS_BASE_URL:-}" ]; then
+            echo "Using Vault CLI from ARTIFACTS_BASE_URL"
+            VAULT_ZIP_URL="${ARTIFACTS_BASE_URL}/api/v1/buckets/packet/objects/download?prefix=vault_${VAULT_VER}_linux_amd64.zip"
+          else
+            echo "ARTIFACTS_BASE_URL unset; using HashiCorp public release (ok for GitHub-hosted runners)"
+            VAULT_ZIP_URL="https://releases.hashicorp.com/vault/${VAULT_VER}/vault_${VAULT_VER}_linux_amd64.zip"
+          fi
+          wget -qO vault.zip "$VAULT_ZIP_URL"
           unzip -q vault.zip
           sudo mv vault /usr/local/bin/
           rm vault.zip
