@@ -147,11 +147,9 @@ jobs:
       - name: Build and push (branch / test)
         if: steps.meta.outputs.is_release != 'true'
         run: |
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           HUB="${DOCKERHUB_IMAGE}"
           docker buildx build \
             --platform linux/amd64 \
-            -t ${HUB}:sha-${SHORT_SHA} \
             -t ${HUB}:test \
             --push .
 
