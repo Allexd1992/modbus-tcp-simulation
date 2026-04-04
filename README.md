@@ -168,6 +168,16 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 - Docker Hub: `allexd2010/modbus-server-sim`
 - Tags: e.g. **`2.1.1`**
 
+## 🔩 Git: strip `Made-with: Cursor` from commits
+
+This repo ships a **`commit-msg`** hook under **`.githooks/`** that removes lines like `Made-with: Cursor` (so they are not stored in history). Enable once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+To turn the hook off: `git config --unset core.hooksPath`. To remove such lines from **past** commits, use `git rebase -i` / `filter-repo` (not covered here).
+
 ## 📄 License
 
 MIT

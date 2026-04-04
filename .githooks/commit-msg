@@ -1,0 +1,11 @@
+#!/bin/sh
+# Drop Cursor IDE marketing lines from the commit message (optional trailer).
+# Enable: git config core.hooksPath .githooks
+msg="$1"
+[ -f "$msg" ] || exit 0
+tmp="${msg}.$$"
+awk '
+/^[[:space:]]*[Mm]ade-with:[[:space:]]*[Cc]ursor[[:space:]]*$/ { next }
+/^[[:space:]]*[Mm]ade with [Cc]ursor[[:space:]]*$/ { next }
+{ print }
+' "$msg" > "$tmp" && mv "$tmp" "$msg"
