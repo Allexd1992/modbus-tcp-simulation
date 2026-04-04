@@ -1,6 +1,7 @@
 # CI: GitHub Actions; Gitea Actions uses this path if `.gitea/workflows` is absent.
 # Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
-# Repo secrets: VAULT_ADDR, VAULT_TOKEN. Optional: ARTIFACTS_BASE_URL (Vault CLI mirror).
+# Repo secrets: VAULT_ADDR, VAULT_TOKEN; DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (Docker Hub push).
+# Optional: ARTIFACTS_BASE_URL (Vault CLI mirror).
 # Registry TLS (pick one): REGISTRY_CA_CERT = PEM of signing CA, or REGISTRY_TLS_INSECURE = true
 # (daemon insecure-registries + BuildKit [registry] insecure/ca — buildx push uses BuildKit, not only docker login).
 name: CI
@@ -111,6 +112,8 @@ jobs:
     if: github.event_name != 'pull_request'
     env:
       REGISTRY_HOST: git.mylocaldomain.online
+      # Docker Hub namespace/image (no registry prefix); same tags as Gitea push.
+      DOCKERHUB_IMAGE: allexd2010/modbus-server-sim
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -205,6 +208,12 @@ jobs:
         run: |
           echo "$TOKEN" | docker login "${REGISTRY_HOST}" -u "$USER" --password-stdin
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract metadata
         id: meta
         env:
@@ -231,10 +240,13 @@ jobs:
         run: |
           REPO="${{ steps.meta.outputs.repo }}"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          HUB="${DOCKERHUB_IMAGE}"
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:sha-${SHORT_SHA} \
             -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:test \
+            -t ${HUB}:sha-${SHORT_SHA} \
+            -t ${HUB}:test \
             --push .
 
       - name: Build and push (release tag)
@@ -242,10 +254,13 @@ jobs:
         run: |
           REPO="${{ steps.meta.outputs.repo }}"
           VERSION="${{ steps.meta.outputs.version }}"
+          HUB="${DOCKERHUB_IMAGE}"
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
             -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:latest \
             -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:${VERSION} \
+            -t ${HUB}:latest \
+            -t ${HUB}:${VERSION} \
             --push .
 
   ci-success:
