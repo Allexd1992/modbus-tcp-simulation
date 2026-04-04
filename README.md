@@ -4,7 +4,9 @@
 
 [![Docker Hub](https://img.shields.io/docker/pulls/allexd2010/modbus-server-sim?logo=docker)](https://hub.docker.com/r/allexd2010/modbus-server-sim)
 [![GitHub](https://img.shields.io/badge/GitHub-Allexd1992%2Fmodbus--tcp--simulation-181717?logo=github)](https://github.com/Allexd1992/modbus-tcp-simulation)
-[![Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rustc-1.90-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Node.js](https://img.shields.io/badge/node.js-24.x-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Latest tag](https://img.shields.io/github/v/tag/Allexd1992/modbus-tcp-simulation?label=tag&logo=git)](https://github.com/Allexd1992/modbus-tcp-simulation/tags)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Modbus TCP Server ·  In-memory store · Web UI · REST · Swagger · MCP over HTTP**
