@@ -169,7 +169,7 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 
 - Docker Hub: `allexd2010/modbus-server-sim`
 - Tags: e.g. **`2.1.1`**
-- **CI** (`.github/workflows/ci.yml`): on non-PR pushes, the image is built and pushed **only to Docker Hub** (`:test` on branches; `:latest` and `:<version>` on semver tags). **Platforms:** branch/test builds **`linux/amd64` only**; **release tags** add **`linux/arm64`** (multi-arch manifest). Set secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** ([Docker Hub access token](https://hub.docker.com/settings/security)).
+- **CI** (`.github/workflows/ci.yml`): on non-PR pushes, the image is built and pushed **only to Docker Hub** (`:test` on branches; `:latest` and `:<semver>` on release tags — image tag is **without** leading `v`, e.g. `2.1.1` even if the git tag is `v2.1.1`). **Platforms:** branch/test builds **`linux/amd64` only**; **release tags** add **`linux/arm64`** (multi-arch manifest). Set secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** ([Docker Hub access token](https://hub.docker.com/settings/security)).
 
 ## 🔩 Git: strip `Made-with: Cursor` from commits
 
