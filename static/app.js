@@ -30,10 +30,28 @@
   let lastRead = { kind: "holding", addr: 0, values: [], bools: [] };
   let pollTimer = null;
   let readInFlight = false;
-  /** Подсказка в статусе: таблица обрезана по числу строк */
-  let matrixRowsHint = "";
-  const MAX_MATRIX_ROWS = 10;
-  const MAX_READ_CNT = 256;
+  /** Лимиты с бэкенда (`GET /api/v1/ui-config`), иначе значения по умолчанию. */
+  let maxReadCount = 65535;
+  let maxModbusAddress = 65535;
+
+  async function loadUiConfig() {
+    try {
+      const r = await fetch(`${API}/ui-config`);
+      if (!r.ok) return;
+      const j = await r.json();
+      if (Number.isFinite(j.max_read_count) && j.max_read_count >= 1) {
+        maxReadCount = Math.min(65535, Math.floor(j.max_read_count));
+      }
+      if (
+        Number.isFinite(j.max_modbus_address) &&
+        j.max_modbus_address >= 0
+      ) {
+        maxModbusAddress = Math.min(65535, Math.floor(j.max_modbus_address));
+      }
+    } catch (e) {
+      /* defaults */
+    }
+  }
 
   function pollIntervalMs() {
     if (!pollIntervalSecEl) return DEFAULT_POLL_SEC * 1000;
@@ -229,25 +247,13 @@
             docE: docAddrLabel(kind.value, end),
           })
         : "";
-    if (matrixRowsHint) base += " · " + matrixRowsHint;
     areaHint.textContent = base;
   }
 
-  function finishMatrixRowsHint(totalRowCount) {
-    matrixRowsHint =
-      totalRowCount > MAX_MATRIX_ROWS
-        ? t("area.tableTrunc", {
-            shown: MAX_MATRIX_ROWS,
-            total: totalRowCount,
-          })
-        : "";
-    updateAreaHint();
-  }
-
   function shiftArea(delta) {
-    const step = Number(cntEl.value) || MAX_READ_CNT;
+    const step = Number(cntEl.value) || maxReadCount;
     let a = Number(addrEl.value) || 0;
-    a = Math.max(0, Math.min(65534, a + delta * step));
+    a = Math.max(0, Math.min(maxModbusAddress, a + delta * step));
     addrEl.value = String(a);
     updateAreaHint();
     doRead();
@@ -264,14 +270,21 @@
   }
 
   function syncCntLimits() {
-    cntEl.max = String(MAX_READ_CNT);
+    cntEl.max = String(maxReadCount);
     cntEl.title = t("cnt.title", {
-      maxRead: MAX_READ_CNT,
-      maxRows: MAX_MATRIX_ROWS,
+      maxRead: maxReadCount,
     });
     let v = Number(cntEl.value);
     if (!Number.isFinite(v) || v < 1) v = 1;
-    if (v > MAX_READ_CNT) cntEl.value = String(MAX_READ_CNT);
+    if (v > maxReadCount) cntEl.value = String(maxReadCount);
+  }
+
+  function syncAddrLimits() {
+    if (!addrEl) return;
+    addrEl.max = String(maxModbusAddress);
+    let a = Number(addrEl.value);
+    if (!Number.isFinite(a) || a < 0) a = 0;
+    if (a > maxModbusAddress) addrEl.value = String(maxModbusAddress);
   }
 
   function renderMatrixHeader(mode, k) {
@@ -371,8 +384,17 @@
       setMsg(t("msg.badAddress"), "err");
       return;
     }
-    if (!Number.isFinite(cnt) || cnt < 1 || cnt > MAX_READ_CNT) {
-      setMsg(t("msg.badCount", { max: MAX_READ_CNT }), "err");
+    if (addr > maxModbusAddress) {
+      setMsg(t("msg.badAddress"), "err");
+      return;
+    }
+    if (!Number.isFinite(cnt) || cnt < 1 || cnt > maxReadCount) {
+      setMsg(t("msg.badCount", { max: maxReadCount }), "err");
+      return;
+    }
+    const windowEnd = addr + cnt - 1;
+    if (windowEnd > maxModbusAddress) {
+      setMsg(t("msg.windowOutOfRange", { max: maxModbusAddress }), "err");
       return;
     }
     const mode = displayMode.value;
@@ -398,7 +420,6 @@
       if (!Array.isArray(data)) {
         setMsg(t("msg.apiNotArray"), "err");
         tbody.innerHTML = "";
-        matrixRowsHint = "";
         updateAreaHint();
         return;
       }
@@ -425,7 +446,6 @@
     } catch (e) {
       setMsg(String(e.message || e), "err");
       tbody.innerHTML = "";
-      matrixRowsHint = "";
       updateAreaHint();
     }
   }
@@ -463,8 +483,7 @@
       const bools = lastRead.bools;
       const COLS = matrixCols(mode, k);
       const rows = Math.max(1, Math.ceil(bools.length / COLS));
-      const rowLimit = Math.min(rows, MAX_MATRIX_ROWS);
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < rows; r++) {
         const tr = document.createElement("tr");
         const rowStart = start + r * COLS;
         tr.appendChild(thRowLabel(k, rowStart));
@@ -492,7 +511,6 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(rows);
       return;
     }
 
@@ -502,8 +520,7 @@
     if (mode === "uint16") {
       const n = regs.length;
       const rows = Math.max(1, Math.ceil(n / COLS));
-      const rowLimit = Math.min(rows, MAX_MATRIX_ROWS);
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < rows; r++) {
         const tr = document.createElement("tr");
         const rowStart = start + r * COLS;
         tr.appendChild(thRowLabel(k, rowStart));
@@ -536,15 +553,13 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(rows);
       return;
     }
 
     if (mode === "int16") {
       const n = regs.length;
       const rows = Math.max(1, Math.ceil(n / COLS));
-      const rowLimit = Math.min(rows, MAX_MATRIX_ROWS);
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < rows; r++) {
         const tr = document.createElement("tr");
         const rowStart = start + r * COLS;
         tr.appendChild(thRowLabel(k, rowStart));
@@ -579,14 +594,12 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(rows);
       return;
     }
 
     if (mode === "bitmask") {
       const n = regs.length;
-      const rowLimit = Math.min(n, MAX_MATRIX_ROWS);
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < n; r++) {
         const abs = start + r;
         const word = regs[r] & 0xffff;
         const tr = document.createElement("tr");
@@ -612,7 +625,6 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(n);
       return;
     }
 
@@ -623,9 +635,8 @@
       }
       const nPairs = regs.length / 2;
       const rows = Math.max(1, Math.ceil(nPairs / COLS));
-      const rowLimit = Math.min(rows, MAX_MATRIX_ROWS);
       let pairIndex = 0;
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < rows; r++) {
         const tr = document.createElement("tr");
         const rowStart = start + r * COLS * 2;
         tr.appendChild(thRowLabel(k, rowStart));
@@ -668,7 +679,6 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(rows);
       return;
     }
 
@@ -679,9 +689,8 @@
       }
       const nPairs = regs.length / 2;
       const rows = Math.max(1, Math.ceil(nPairs / COLS));
-      const rowLimit = Math.min(rows, MAX_MATRIX_ROWS);
       let pairIndex = 0;
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < rows; r++) {
         const tr = document.createElement("tr");
         const rowStart = start + r * COLS * 2;
         tr.appendChild(thRowLabel(k, rowStart));
@@ -726,7 +735,6 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(rows);
       return;
     }
 
@@ -737,9 +745,8 @@
       }
       const nQuads = regs.length / 4;
       const rows = Math.max(1, Math.ceil(nQuads / COLS));
-      const rowLimit = Math.min(rows, MAX_MATRIX_ROWS);
       let quadIndex = 0;
-      for (let r = 0; r < rowLimit; r++) {
+      for (let r = 0; r < rows; r++) {
         const tr = document.createElement("tr");
         const rowStart = start + r * COLS * 4;
         tr.appendChild(thRowLabel(k, rowStart));
@@ -783,12 +790,10 @@
         }
         tbody.appendChild(tr);
       }
-      finishMatrixRowsHint(rows);
     }
   }
 
   function errMatrixRow(mode, k, text) {
-    matrixRowsHint = "";
     const tr = document.createElement("tr");
     const td = document.createElement("td");
     td.colSpan = matrixCols(mode, k) + 1;
@@ -944,7 +949,6 @@
     if (lastRead.values.length) {
       renderTable(displayMode.value, wordOrder32.value);
     } else {
-      matrixRowsHint = "";
       renderMatrixHeader(displayMode.value, kind.value);
       tbody.innerHTML = "";
       updateAreaHint();
@@ -957,13 +961,16 @@
     }
   });
 
-  syncTabsFromSelect();
-  syncCntLimits();
-  syncRegOptionsVisibility();
-  syncWordOrderVisibility();
-  loadPollSettings();
-  updateAreaHint();
-  doRead(false).then(() => {
+  loadUiConfig().then(() => {
+    syncTabsFromSelect();
+    syncCntLimits();
+    syncAddrLimits();
+    syncRegOptionsVisibility();
+    syncWordOrderVisibility();
+    loadPollSettings();
+    updateAreaHint();
+    return doRead(false);
+  }).then(() => {
     if (isPollEnabled()) startPolling();
   });
 

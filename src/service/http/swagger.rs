@@ -6,6 +6,7 @@ use super::types::{RequestCoil, RequestRegister};
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        api::ui_config,
         api::holding_registers_read,
         api::input_registers_read,
         api::discrete_coils_read,
@@ -22,7 +23,7 @@ use super::types::{RequestCoil, RequestRegister};
         api::discrete_inputs_write,
     ),
     components(
-        schemas(RequestCoil,RequestRegister)
+        schemas(RequestCoil, RequestRegister, api::UiConfig)
     ),
     tags(
         (name = "Modbus TCP Server Data Control", description = "Commands control list")

@@ -55,8 +55,7 @@
       "grid.aria": "Register matrix",
       "poll.title": "Periodic table refresh",
       "addr.title": "Window offset: start word/bit address (0-based)",
-      "cnt.title":
-        "Words/bits to request (1…{maxRead}); table shows at most {maxRows} rows",
+      "cnt.title": "Words/bits to request (1…{maxRead})",
       "displayMode.title": "Word decoding",
       "wordOrder.title": "16-bit word order",
       "pollInterval.title": "Seconds between auto-refreshes",
@@ -67,7 +66,6 @@
       "unit.word": "words",
       "area.window":
         "Window: protocol {a}…{end} ({c} {unit}) · doc. {docS}…{docE}",
-      "area.tableTrunc": "table: {shown} of {total} rows",
       "th.corner.bitmask": "Word address (protocol); bits 0…15 to the right (LSB = b0)",
       "th.corner.row": "First cell address in row (protocol, 0-based)",
       "th.bitTitle": "Bit {n} (LSB = b0)",
@@ -77,6 +75,8 @@
       "inp.float32Title": "Float32 (IEEE754 BE), use . or , as decimal separator",
       "inp.float64Title": "Float64 BE (4 words), use . or , as decimal separator",
       "msg.badAddress": "Invalid address",
+      "msg.windowOutOfRange":
+        "Window end (start + count − 1) must be ≤ {max} (protocol)",
       "msg.badCount": "Count: 1…{max}",
       "msg.int32even": "int32 requires an even number of words",
       "msg.floatEven": "float requires an even number of words",
@@ -150,8 +150,7 @@
       "grid.aria": "Матрица регистров",
       "poll.title": "Периодическое обновление таблицы",
       "addr.title": "Сдвиг окна: стартовый адрес слова/бита (0-based, протокол)",
-      "cnt.title":
-        "Сколько слов/битов запросить (1…{maxRead}); в таблице не более {maxRows} строк",
+      "cnt.title": "Сколько слов/битов запросить (1…{maxRead})",
       "displayMode.title": "Декодирование слов",
       "wordOrder.title": "Порядок 16-бит слов",
       "pollInterval.title": "Секунды между автообновлениями",
@@ -162,7 +161,6 @@
       "unit.word": "сл.",
       "area.window":
         "Окно: протокол {a}…{end} ({c} {unit}) · док. {docS}…{docE}",
-      "area.tableTrunc": "таблица: {shown} из {total} строк",
       "th.corner.bitmask":
         "Адрес слова (протокол), справа — биты 0…15 (LSB = b0)",
       "th.corner.row": "Адрес первой ячейки строки (протокол, 0-based)",
@@ -174,6 +172,8 @@
         "Float32 (IEEE754 BE), десятичный разделитель . или ,",
       "inp.float64Title": "Float64 BE (4 слова), десятичный разделитель . или ,",
       "msg.badAddress": "Некорректный адрес",
+      "msg.windowOutOfRange":
+        "Конец окна (старт + количество − 1) должен быть ≤ {max} (протокол)",
       "msg.badCount": "Количество: 1…{max}",
       "msg.int32even": "Для int32 нужно чётное число слов",
       "msg.floatEven": "Для float нужно чётное число слов",
