@@ -1,9 +1,6 @@
 # CI: GitHub Actions; Gitea Actions uses this path if `.gitea/workflows` is absent.
 # Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
-# Repo secrets: VAULT_ADDR, VAULT_TOKEN; DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (Docker Hub push).
-# Optional: ARTIFACTS_BASE_URL (Vault CLI mirror).
-# Registry TLS (pick one): REGISTRY_CA_CERT = PEM of signing CA, or REGISTRY_TLS_INSECURE = true
-# (daemon insecure-registries + BuildKit [registry] insecure/ca — buildx push uses BuildKit, not only docker login).
+# Docker push: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (image: DOCKERHUB_IMAGE in docker-build-push job).
 name: CI
 
 on:
@@ -106,107 +103,18 @@ jobs:
         run: cargo build --release --verbose
 
   docker-build-push:
-    name: Build and push Docker image
+    name: Build and push Docker image (Docker Hub only)
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name != 'pull_request'
     env:
-      REGISTRY_HOST: git.mylocaldomain.online
-      # Docker Hub namespace/image (no registry prefix); same tags as Gitea push.
       DOCKERHUB_IMAGE: allexd2010/modbus-server-sim
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure Docker registry TLS (CA or insecure-registries)
-        id: registry_tls
-        env:
-          REGISTRY_CA_CERT: ${{ secrets.REGISTRY_CA_CERT }}
-          REGISTRY_TLS_INSECURE: ${{ secrets.REGISTRY_TLS_INSECURE }}
-        run: |
-          set -euo pipefail
-          BK_FILE="${GITHUB_WORKSPACE}/buildkit-ci.toml"
-          rm -f "${BK_FILE}" "${GITHUB_WORKSPACE}/registry-ca.pem"
-          buildkit_config=""
-          if [ -n "${REGISTRY_CA_CERT:-}" ]; then
-            sudo mkdir -p "/etc/docker/certs.d/${REGISTRY_HOST}"
-            printf '%s\n' "$REGISTRY_CA_CERT" | sudo tee "/etc/docker/certs.d/${REGISTRY_HOST}/ca.crt" >/dev/null
-            echo "Installed registry CA: /etc/docker/certs.d/${REGISTRY_HOST}/ca.crt"
-            printf '%s\n' "$REGISTRY_CA_CERT" > "${GITHUB_WORKSPACE}/registry-ca.pem"
-            {
-              echo "[registry.\"${REGISTRY_HOST}\"]"
-              echo '  ca = ["registry-ca.pem"]'
-            } > "${BK_FILE}"
-            buildkit_config="${BK_FILE}"
-            echo "Wrote BuildKit registry CA config: ${BK_FILE}"
-          elif [ "${REGISTRY_TLS_INSECURE:-}" = "true" ]; then
-            sudo mkdir -p /etc/docker
-            if [ -f /etc/docker/daemon.json ]; then
-              sudo jq --arg h "$REGISTRY_HOST" '.["insecure-registries"] = ((.["insecure-registries"] // []) + [$h] | unique)' /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.new >/dev/null
-              sudo mv /etc/docker/daemon.json.new /etc/docker/daemon.json
-            else
-              printf '{"insecure-registries":["%s"]}\n' "$REGISTRY_HOST" | sudo tee /etc/docker/daemon.json >/dev/null
-            fi
-            sudo systemctl restart docker
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              docker info >/dev/null 2>&1 && break
-              sleep 1
-            done
-            echo "Docker restarted with insecure-registries for ${REGISTRY_HOST}"
-            {
-              echo "[registry.\"${REGISTRY_HOST}\"]"
-              echo "  insecure = true"
-            } > "${BK_FILE}"
-            buildkit_config="${BK_FILE}"
-            echo "Wrote BuildKit insecure registry config: ${BK_FILE}"
-          else
-            echo "No REGISTRY_CA_CERT and REGISTRY_TLS_INSECURE is not true — using default system trust only."
-          fi
-          echo "buildkit_config=${buildkit_config}" >> "${GITHUB_OUTPUT}"
-
-      - name: Set up Docker Buildx (with BuildKit registry config)
-        if: steps.registry_tls.outputs.buildkit_config != ''
-        uses: docker/setup-buildx-action@v3
-        with:
-          config: ${{ steps.registry_tls.outputs.buildkit_config }}
-
       - name: Set up Docker Buildx
-        if: steps.registry_tls.outputs.buildkit_config == ''
         uses: docker/setup-buildx-action@v3
-
-      - name: Install Vault CLI
-        env:
-          ARTIFACTS_BASE_URL: ${{ secrets.ARTIFACTS_BASE_URL }}
-        run: |
-          set -euo pipefail
-          VAULT_VER="1.15.4"
-          if [ -n "${ARTIFACTS_BASE_URL:-}" ]; then
-            echo "Using Vault CLI from ARTIFACTS_BASE_URL"
-            VAULT_ZIP_URL="${ARTIFACTS_BASE_URL}/api/v1/buckets/packet/objects/download?prefix=vault_${VAULT_VER}_linux_amd64.zip"
-          else
-            echo "ARTIFACTS_BASE_URL unset; using HashiCorp public release (ok for GitHub-hosted runners)"
-            VAULT_ZIP_URL="https://releases.hashicorp.com/vault/${VAULT_VER}/vault_${VAULT_VER}_linux_amd64.zip"
-          fi
-          wget -qO vault.zip "$VAULT_ZIP_URL"
-          unzip -q vault.zip
-          sudo mv vault /usr/local/bin/
-          rm vault.zip
-          vault --version
-
-      - name: Load secrets from Vault
-        env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
-          VAULT_SKIP_VERIFY: "true"
-        run: |
-          echo "Loading secrets from Vault..."
-          vault kv get -format=json action/gitea | \
-            jq -r '.data.data | to_entries[] | "\(.key | ascii_upcase)=\(.value)"' >> $GITHUB_ENV
-          echo "Secrets loaded."
-
-      - name: Login to Gitea Container Registry
-        run: |
-          echo "$TOKEN" | docker login "${REGISTRY_HOST}" -u "$USER" --password-stdin
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -218,10 +126,7 @@ jobs:
         id: meta
         env:
           REF: ${{ github.ref }}
-          REPO_FULL: ${{ github.repository }}
         run: |
-          REPO_LOWER=$(echo "$REPO_FULL" | tr '[:upper:]' '[:lower:]')
-          echo "repo=${REPO_LOWER}" >> $GITHUB_OUTPUT
           if [[ "$REF" =~ ^refs/tags/v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "is_release=true" >> $GITHUB_OUTPUT
             VERSION="${REF#refs/tags/}"
@@ -238,13 +143,10 @@ jobs:
       - name: Build and push (branch / test)
         if: steps.meta.outputs.is_release != 'true'
         run: |
-          REPO="${{ steps.meta.outputs.repo }}"
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           HUB="${DOCKERHUB_IMAGE}"
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:sha-${SHORT_SHA} \
-            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:test \
             -t ${HUB}:sha-${SHORT_SHA} \
             -t ${HUB}:test \
             --push .
@@ -252,13 +154,10 @@ jobs:
       - name: Build and push (release tag)
         if: steps.meta.outputs.is_release == 'true'
         run: |
-          REPO="${{ steps.meta.outputs.repo }}"
           VERSION="${{ steps.meta.outputs.version }}"
           HUB="${DOCKERHUB_IMAGE}"
           docker buildx build \
             --platform linux/amd64,linux/arm64 \
-            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:latest \
-            -t ${REGISTRY_HOST}/${REPO}/modbus-server-sim:${VERSION} \
             -t ${HUB}:latest \
             -t ${HUB}:${VERSION} \
             --push .
