@@ -2,7 +2,7 @@
 # Runners: set labels (e.g. ubuntu-latest) in Administration → Actions → Runners.
 # Repo secrets: VAULT_ADDR, VAULT_TOKEN. Optional: ARTIFACTS_BASE_URL (Vault CLI mirror).
 # Registry TLS (pick one): REGISTRY_CA_CERT = PEM of signing CA, or REGISTRY_TLS_INSECURE = true
-# to add the host to Docker insecure-registries (no cert verify; dev/trusted networks only).
+# (daemon insecure-registries + BuildKit [registry] insecure/ca — buildx push uses BuildKit, not only docker login).
 name: CI
 
 on:
@@ -116,15 +116,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure Docker registry TLS (CA or insecure-registries)
+        id: registry_tls
         env:
           REGISTRY_CA_CERT: ${{ secrets.REGISTRY_CA_CERT }}
           REGISTRY_TLS_INSECURE: ${{ secrets.REGISTRY_TLS_INSECURE }}
         run: |
           set -euo pipefail
+          BK_FILE="${GITHUB_WORKSPACE}/buildkit-ci.toml"
+          rm -f "${BK_FILE}" "${GITHUB_WORKSPACE}/registry-ca.pem"
+          buildkit_config=""
           if [ -n "${REGISTRY_CA_CERT:-}" ]; then
             sudo mkdir -p "/etc/docker/certs.d/${REGISTRY_HOST}"
             printf '%s\n' "$REGISTRY_CA_CERT" | sudo tee "/etc/docker/certs.d/${REGISTRY_HOST}/ca.crt" >/dev/null
             echo "Installed registry CA: /etc/docker/certs.d/${REGISTRY_HOST}/ca.crt"
+            printf '%s\n' "$REGISTRY_CA_CERT" > "${GITHUB_WORKSPACE}/registry-ca.pem"
+            {
+              echo "[registry.\"${REGISTRY_HOST}\"]"
+              echo '  ca = ["registry-ca.pem"]'
+            } > "${BK_FILE}"
+            buildkit_config="${BK_FILE}"
+            echo "Wrote BuildKit registry CA config: ${BK_FILE}"
           elif [ "${REGISTRY_TLS_INSECURE:-}" = "true" ]; then
             sudo mkdir -p /etc/docker
             if [ -f /etc/docker/daemon.json ]; then
@@ -139,11 +150,25 @@ jobs:
               sleep 1
             done
             echo "Docker restarted with insecure-registries for ${REGISTRY_HOST}"
+            {
+              echo "[registry.\"${REGISTRY_HOST}\"]"
+              echo "  insecure = true"
+            } > "${BK_FILE}"
+            buildkit_config="${BK_FILE}"
+            echo "Wrote BuildKit insecure registry config: ${BK_FILE}"
           else
             echo "No REGISTRY_CA_CERT and REGISTRY_TLS_INSECURE is not true — using default system trust only."
           fi
+          echo "buildkit_config=${buildkit_config}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx (with BuildKit registry config)
+        if: steps.registry_tls.outputs.buildkit_config != ''
+        uses: docker/setup-buildx-action@v3
+        with:
+          config: ${{ steps.registry_tls.outputs.buildkit_config }}
 
       - name: Set up Docker Buildx
+        if: steps.registry_tls.outputs.buildkit_config == ''
         uses: docker/setup-buildx-action@v3
 
       - name: Install Vault CLI
