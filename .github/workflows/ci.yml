@@ -121,9 +121,7 @@ jobs:
           if [[ "$REF" =~ ^refs/tags/v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "is_release=true" >> $GITHUB_OUTPUT
             VERSION="${REF#refs/tags/}"
-            if [[ ! "$VERSION" =~ ^v ]]; then
-              VERSION="v${VERSION}"
-            fi
+            VERSION="${VERSION#v}"
             echo "version=${VERSION}" >> $GITHUB_OUTPUT
             echo "Release build: ${VERSION}"
           else
