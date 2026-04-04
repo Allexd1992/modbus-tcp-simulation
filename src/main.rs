@@ -2,7 +2,7 @@ use std::env;
 use std::sync::{Arc, Mutex};
 mod service;
 use crate::service::{
-    http::{api::Api, context::get_rocket},
+    http::{api::Api, context::get_rocket, limits::HttpLimits},
     mcp::run_mcp_http_server,
     modbus::{builder::server_build, store::Store},
 };
@@ -51,9 +51,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("MCP disabled (MCP_SERVER_PORT=0)");
     }
 
+    let limits = HttpLimits::from_env();
+    eprintln!(
+        "HTTP Modbus limits: MB_MAX_ADDRESS={} MB_MAX_READ_COUNT={}",
+        limits.max_modbus_address, limits.max_read_count
+    );
+
     tokio::select! {
         _ = server_build(socket_addr,Arc::clone(&registry)) => unreachable!(),
-        _ = get_rocket(rocket_config,Arc::clone(&registry),Api::new()).launch()=>{},
+        _ = get_rocket(rocket_config,Arc::clone(&registry),Api::new(), limits).launch()=>{},
     }
 
     Ok(())

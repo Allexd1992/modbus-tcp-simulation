@@ -40,16 +40,16 @@ A **Modbus TCP** simulator with a **single in-memory store**: web UI, **REST API
 
 ### Docker Hub image (recommended)
 
-Current tag: **`2.1.0`**.
+Current tag (example): **`2.1.1`**.
 
 ```bash
-docker pull allexd2010/modbus-server-sim:2.1.0
+docker pull allexd2010/modbus-server-sim:2.1.1
 
 docker run -d --name modbus-sim \
   -p 9090:9090 \
   -p 502:502 \
   -p 18081:8081 \
-  allexd2010/modbus-server-sim:2.1.0
+  allexd2010/modbus-server-sim:2.1.1
 ```
 
 | Host | Container | Purpose |
@@ -63,7 +63,7 @@ docker run -d --name modbus-sim \
 Build the image locally:
 
 ```bash
-docker build -t allexd2010/modbus-server-sim:2.1.0 .
+docker build -t allexd2010/modbus-server-sim:2.1.1 .
 ```
 
 ### Docker Compose
@@ -103,7 +103,7 @@ The installed app still talks to the **same origin** as the page; keep the backe
 ## 🖥️ Web UI
 
 - Tabs: holding / input / coils / discrete inputs.
-- **Offset** and **Count** set the read window (up to 256 words per request; the table shows a limited number of rows — see the hint at the bottom).
+- **Offset** and **Count** set the read window. Limits come from the server (`MB_MAX_ADDRESS`, `MB_MAX_READ_COUNT`; defaults **65535** each). The UI loads them from **`GET /api/v1/ui-config`** so inputs stay in sync. The register matrix scrolls inside the grid area.
 - **Auto** — periodic reads; interval in seconds; while a cell is focused, auto-refresh does not overwrite your input.
 - **AI** — MCP help text, current URL for Cursor, `mcp.json` download (host as on the page, port **18081** by default, or `?mcpPort=` in the page URL).
 
@@ -115,11 +115,12 @@ The protocol and API use **zero-based offsets** (the first holding register is a
 
 All routes are under `/api/v1/`; holding examples:
 
+- `GET /api/v1/ui-config` — JSON `max_modbus_address`, `max_read_count` (same limits as env vars below; used by the web UI)
 - `GET /api/v1/holding-registers/{addr}/{cnt}` — read
 - `POST /api/v1/holding-register/{addr}/{data}` — single word
 - `POST /api/v1/holding-registers/{addr}` — JSON body `{"data":[…]}`
 
-Same pattern for input, coils, and discrete — see Swagger.
+Read/write requests that exceed the configured limits return **400**. Same URL patterns for input, coils, and discrete — see Swagger.
 
 ## 🤖 MCP (Cursor and others)
 
@@ -150,9 +151,11 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 | `WEB_SERVER_PORT` | `9090` | HTTP (REST, Swagger, static `/ui`) |
 | `MB_SERVER_PORT` | `502` | Modbus TCP |
 | `MCP_SERVER_PORT` | `8081` | MCP port inside the process; **`0`** — do not start MCP |
+| `MB_MAX_ADDRESS` | `65535` | Maximum **protocol address** (inclusive). The window `addr` … `addr + cnt - 1` must not pass this bound. |
+| `MB_MAX_READ_COUNT` | `65535` | Maximum **words or bits** in one HTTP read, and maximum **elements** in one batch write body. |
 | `RUST_LOG` | (none) | Log level, e.g. `info` |
 
-**Modbus clients:** use the host port mapped from `MB_SERVER_PORT` (default **502**).
+**Modbus clients:** use the host port mapped from `MB_SERVER_PORT` (default **502**). The **`MB_MAX_*`** variables apply to the **HTTP REST API** (and what the web UI calls), not to raw Modbus TCP frame limits inside `tokio-modbus`.
 
 ## 🔧 Troubleshooting
 
@@ -163,7 +166,7 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 ## 📦 Image & registry
 
 - Docker Hub: `allexd2010/modbus-server-sim`
-- Tags: e.g. **`2.1.0`**
+- Tags: e.g. **`2.1.1`**
 
 ## 📄 License
 
@@ -171,4 +174,4 @@ MIT
 
 ---
 
-<p align="center"><strong>Documentation</strong> · image tag <code>2.1.0</code></p>
+<p align="center"><strong>Documentation</strong> · example image tag <code>2.1.1</code></p>

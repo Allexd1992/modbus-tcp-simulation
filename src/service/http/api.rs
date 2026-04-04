@@ -3,8 +3,31 @@ use crate::service::http::types::{RequestCoil, RequestRegister};
 use crate::service::modbus::interfaces::IRegistry;
 use rocket::data::ByteUnit;
 use rocket::http::Status;
+use rocket::serde::json::Json;
+use rocket::serde::Serialize;
 use rocket::Data;
 use rocket::{get, post, routes, Route, State};
+use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+#[serde(crate = "rocket::serde")]
+pub struct UiConfig {
+    pub max_modbus_address: u16,
+    pub max_read_count: u16,
+}
+
+/// Лимиты для UI и клиентов (синхронно с `MB_MAX_ADDRESS`, `MB_MAX_READ_COUNT`).
+#[utoipa::path(
+    context_path = "/api/v1",
+    responses((status = 200, description = "Limits", body = UiConfig))
+)]
+#[get("/ui-config")]
+pub fn ui_config(state: &State<AppState>) -> Json<UiConfig> {
+    Json(UiConfig {
+        max_modbus_address: state.limits.max_modbus_address,
+        max_read_count: state.limits.max_read_count,
+    })
+}
 
 /// Read Holding registers
 #[utoipa::path(
@@ -24,6 +47,7 @@ pub fn holding_registers_read(
     cnt: u16,
     state: &State<AppState>,
 ) -> Result<String, Status> {
+    state.limits.validate_read_range(addr, cnt)?;
     let store = state
         .store
         .lock()
@@ -49,6 +73,7 @@ pub fn input_registers_read(
     cnt: u16,
     state: &State<AppState>,
 ) -> Result<String, Status> {
+    state.limits.validate_read_range(addr, cnt)?;
     let store = state
         .store
         .lock()
@@ -71,7 +96,7 @@ pub fn input_registers_read(
 )]
 #[get("/discrete-coils/<addr>/<cnt>")]
 pub fn discrete_coils_read(addr: u16, cnt: u16, state: &State<AppState>) -> Result<String, Status> {
-    // Ваш код чтения discrete coils
+    state.limits.validate_read_range(addr, cnt)?;
     let store = state
         .store
         .lock()
@@ -94,7 +119,7 @@ pub fn discrete_coils_read(addr: u16, cnt: u16, state: &State<AppState>) -> Resu
 )]
 #[get("/discrete-inputs/<addr>/<cnt>")]
 pub fn discrete_input_read(addr: u16, cnt: u16, state: &State<AppState>) -> Result<String, Status> {
-    // Ваш код чтения discrete input
+    state.limits.validate_read_range(addr, cnt)?;
     let store = state
         .store
         .lock()
@@ -119,6 +144,7 @@ pub fn discrete_input_read(addr: u16, cnt: u16, state: &State<AppState>) -> Resu
 )]
 #[post("/holding-register/<addr>/<data>")]
 pub fn holding_register_write(addr: u16, data: u16, state: &State<AppState>) -> Result<(), Status> {
+    state.limits.validate_address(addr)?;
     let values = [data];
     let mut store = state
         .store
@@ -145,7 +171,7 @@ pub fn holding_register_write(addr: u16, data: u16, state: &State<AppState>) -> 
 )]
 #[post("/input-register/<addr>/<data>")]
 pub fn input_register_write(addr: u16, data: u16, state: &State<AppState>) -> Result<(), Status> {
-    // Ваш код записи input registers
+    state.limits.validate_address(addr)?;
     let values = [data];
     let mut store = state
         .store
@@ -171,6 +197,7 @@ pub fn input_register_write(addr: u16, data: u16, state: &State<AppState>) -> Re
 )]
 #[post("/discrete-coil/<addr>/<data>")]
 pub fn discrete_coil_write(addr: u16, data: bool, state: &State<AppState>) -> Result<(), Status> {
+    state.limits.validate_address(addr)?;
     let values = [data];
     let mut store = state
         .store
@@ -200,6 +227,7 @@ pub async fn discrete_input_write(
     data: bool,
     state: &State<AppState>,
 ) -> Result<(), Status> {
+    state.limits.validate_address(addr)?;
     let values = [data];
     let mut store = state
         .store
@@ -235,6 +263,7 @@ pub async fn holding_registers_write(
     let payload = values.open(ByteUnit::MB).into_string().await.unwrap();
     let payload_str = payload.as_str();
     let values: RequestRegister = serde_json::from_str(payload_str).unwrap();
+    state.limits.validate_write_span(addr, values.data.len())?;
     let mut store = state
         .store
         .lock()
@@ -267,6 +296,7 @@ pub async fn input_registers_write(
     let payload = values.open(ByteUnit::MB).into_string().await.unwrap();
     let payload_str = payload.as_str();
     let values: RequestRegister = serde_json::from_str(payload_str).unwrap();
+    state.limits.validate_write_span(addr, values.data.len())?;
     let mut store = state
         .store
         .lock()
@@ -299,6 +329,7 @@ pub async fn discrete_coils_write(
     let payload = values.open(ByteUnit::MB).into_string().await.unwrap();
     let payload_str = payload.as_str();
     let values: RequestCoil = serde_json::from_str(payload_str).unwrap();
+    state.limits.validate_write_span(addr, values.data.len())?;
     let mut store = state
         .store
         .lock()
@@ -331,6 +362,7 @@ pub async fn discrete_inputs_write(
     let payload = values.open(ByteUnit::MB).into_string().await.unwrap();
     let payload_str = payload.as_str();
     let values: RequestCoil = serde_json::from_str(payload_str).unwrap();
+    state.limits.validate_write_span(addr, values.data.len())?;
     let mut store = state
         .store
         .lock()
@@ -348,6 +380,7 @@ pub struct Api {
 impl Api {
     pub fn new() -> Self {
         let list = routes![
+            ui_config,
             holding_registers_read,
             input_registers_read,
             discrete_coils_read,

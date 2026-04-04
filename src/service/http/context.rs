@@ -1,6 +1,6 @@
 use super::api::Api;
 use crate::service::{
-    http::{state::AppState, swagger::ApiDoc},
+    http::{limits::HttpLimits, state::AppState, swagger::ApiDoc},
     modbus::store::Store,
 };
 use rocket::fs::{relative, FileServer};
@@ -9,9 +9,14 @@ use std::sync::{Arc, Mutex};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-pub fn get_rocket(config: Config, registry: Arc<Mutex<Store>>, api: Api) -> Rocket<Build> {
+pub fn get_rocket(
+    config: Config,
+    registry: Arc<Mutex<Store>>,
+    api: Api,
+    limits: HttpLimits,
+) -> Rocket<Build> {
     rocket::custom(config)
-        .manage(AppState::new(Arc::clone(&registry)))
+        .manage(AppState::new(Arc::clone(&registry), limits))
         .mount(
             "/",
             SwaggerUi::new("/api/v1/swagger/<_..>")
