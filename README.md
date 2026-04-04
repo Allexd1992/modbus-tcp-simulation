@@ -167,7 +167,7 @@ Disable MCP: `MCP_SERVER_PORT=0`.
 
 - Docker Hub: `allexd2010/modbus-server-sim`
 - Tags: e.g. **`2.1.1`**
-- **CI** (`.github/workflows/ci.yml`): each successful push also publishes the same tags to **Docker Hub** (`:sha-<short>`, `:test` on branches; `:latest` and `:<version>` on release tags). Set repository secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** (access token from [Docker Hub](https://hub.docker.com/settings/security)). Gitea registry push still uses Vault (`VAULT_*`) as before.
+- **CI** (`.github/workflows/ci.yml`): on non-PR pushes, the image is built and pushed **only to Docker Hub** (`:sha-<short>`, `:test` on branches; `:latest` and `:<version>` on semver tags). Set secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** ([Docker Hub access token](https://hub.docker.com/settings/security)).
 
 ## 🔩 Git: strip `Made-with: Cursor` from commits
 
