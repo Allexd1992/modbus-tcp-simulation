@@ -314,17 +314,6 @@ In Docker / Compose, `RUST_LOG=info` is set by default. Static files under `/ui/
 
 - Docker Hub: `allexd2010/modbus-server-sim`
 - Tags: e.g. **`2.2.0`**
-- **CI** (`.github/workflows/ci.yml`): on non-PR pushes, the image is built and pushed **only to Docker Hub** (`:test` on branches; `:latest` and `:<semver>` on release tags — image tag is **without** leading `v`, e.g. `2.2.0` even if the git tag is `v2.2.0`). **Platforms:** branch/test builds **`linux/amd64` only**; **release tags** add **`linux/arm64`** (multi-arch manifest). Set secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`** ([Docker Hub access token](https://hub.docker.com/settings/security)).
-
-## 🔩 Git: strip `Made-with: Cursor` from commits
-
-This repo ships a **`commit-msg`** hook under **`.githooks/`** that removes lines like `Made-with: Cursor` (so they are not stored in history). Enable once per clone:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-To turn the hook off: `git config --unset core.hooksPath`. To remove such lines from **past** commits, use `git rebase -i` / `filter-repo` (not covered here).
 
 ## 📄 License
 
