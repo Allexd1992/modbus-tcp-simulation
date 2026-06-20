@@ -16,7 +16,7 @@
 
 <img src="docs/web-ui.png" alt="Modbus TCP Server Simulation — web dashboard" width="920"/>
 
-*Modern dark glassmorphism UI: register matrix, Float / 32-bit word order, auto-refresh, Swagger & AI.*
+*Web UI v2.2.0: Modbus register matrix, **Address map**, **Simulation rules**, auto-refresh, Swagger & MCP.*
 
 <br/>
 
