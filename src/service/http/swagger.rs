@@ -8,6 +8,11 @@ use super::types::{RequestCoil, RequestRegister};
 
 #[derive(OpenApi)]
 #[openapi(
+    info(
+        title = "Modbus TCP Server Simulation",
+        version = "2.2.0",
+        description = "REST API for Modbus TCP simulator (registers, scripts, address map)"
+    ),
     paths(
         api::ui_config,
         api::holding_registers_read,

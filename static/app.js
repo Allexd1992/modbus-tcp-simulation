@@ -48,6 +48,10 @@
       ) {
         maxModbusAddress = Math.min(65535, Math.floor(j.max_modbus_address));
       }
+      const verEl = document.getElementById("appVersion");
+      if (verEl && j.app_version) {
+        verEl.textContent = "v" + String(j.app_version).replace(/^v/, "");
+      }
     } catch (e) {
       /* defaults */
     }

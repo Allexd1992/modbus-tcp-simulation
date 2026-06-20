@@ -25,6 +25,7 @@ pub struct UiConfig {
     pub max_modbus_address: u16,
     pub max_read_count: u16,
     pub sim_scripts_enabled: bool,
+    pub app_version: &'static str,
 }
 
 /// Лимиты для UI и клиентов (синхронно с `MB_MAX_ADDRESS`, `MB_MAX_READ_COUNT`).
@@ -38,6 +39,7 @@ pub fn ui_config(state: &State<AppState>) -> Json<UiConfig> {
         max_modbus_address: state.limits.max_modbus_address,
         max_read_count: state.limits.max_read_count,
         sim_scripts_enabled: state.sim_scripts.enabled,
+        app_version: env!("CARGO_PKG_VERSION"),
     })
 }
 
