@@ -4,7 +4,7 @@ use std::path::Path;
 use rmcp::ErrorData;
 
 use crate::service::http::sim_scripts::ScriptContent;
-use crate::service::sim::{self, ScriptExportBundle, ScriptExportEntry, ScriptEngineHandle};
+use crate::service::sim::{self, ScriptEngineHandle, ScriptExportBundle, ScriptExportEntry};
 use crate::service::var_map::{self, VarMapBundle};
 
 pub fn map_io_err(e: io::Error) -> ErrorData {
@@ -57,6 +57,7 @@ pub fn export_simulation_bundle(
     .map_err(|e| ErrorData::internal_error(e.to_string(), None))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn import_simulation_bundle(
     scripts_dir: &Path,
     var_map_path: &Path,
@@ -69,7 +70,10 @@ pub fn import_simulation_bundle(
     mode: &str,
 ) -> Result<serde_json::Value, ErrorData> {
     if version != 1 {
-        return Err(ErrorData::invalid_params("unsupported bundle version", None));
+        return Err(ErrorData::invalid_params(
+            "unsupported bundle version",
+            None,
+        ));
     }
     let replace = mode.eq_ignore_ascii_case("replace");
     let mut scripts_imported = 0usize;
@@ -98,16 +102,12 @@ pub fn import_simulation_bundle(
         }
     }
 
-    let var_map_body = if let Some(vm) = var_map {
-        Some(vm)
-    } else if let Some(vars) = top_level_variables {
-        Some(VarMapBundle {
+    let var_map_body = var_map.or_else(|| {
+        top_level_variables.map(|vars| VarMapBundle {
             version: 1,
             variables: vars,
         })
-    } else {
-        None
-    };
+    });
 
     if let Some(bundle) = var_map_body {
         if !bundle.variables.is_empty() {

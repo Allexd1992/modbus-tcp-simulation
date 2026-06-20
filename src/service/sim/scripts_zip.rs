@@ -45,8 +45,8 @@ pub fn export_simulation_zip(
     let script_count = metas.len();
     let var_map = var_map::load(var_map_path)?;
     let var_count = var_map.variables.len();
-    let var_json = serde_json::to_vec(&var_map)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let var_json =
+        serde_json::to_vec(&var_map).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
     let mut buf = Vec::new();
     {

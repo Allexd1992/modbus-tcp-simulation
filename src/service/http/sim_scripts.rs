@@ -281,8 +281,8 @@ pub async fn sim_scripts_import_zip(
         .as_deref()
         .unwrap_or("merge")
         .eq_ignore_ascii_case("replace");
-    let imported =
-        sim::import_scripts_zip(&state.sim_scripts.dir, &bytes, replace).map_err(map_download_err)?;
+    let imported = sim::import_scripts_zip(&state.sim_scripts.dir, &bytes, replace)
+        .map_err(map_download_err)?;
     let engine = state
         .sim_scripts
         .engine
@@ -324,7 +324,8 @@ pub fn sim_scripts_import(
             })
             .collect(),
     };
-    let imported = sim::import_scripts(&state.sim_scripts.dir, &bundle, replace).map_err(map_io_err)?;
+    let imported =
+        sim::import_scripts(&state.sim_scripts.dir, &bundle, replace).map_err(map_io_err)?;
     let engine = state
         .sim_scripts
         .engine

@@ -1,15 +1,15 @@
+use crate::service::http::sim_bundle::{
+    simulation_export, simulation_export_zip, simulation_import, simulation_import_zip,
+    var_map_export, var_map_import,
+};
 use crate::service::http::sim_scripts::{
     sim_scripts_create, sim_scripts_delete, sim_scripts_download, sim_scripts_export,
     sim_scripts_export_zip, sim_scripts_get, sim_scripts_import, sim_scripts_import_zip,
     sim_scripts_list, sim_scripts_put, sim_scripts_reload,
 };
-use crate::service::http::sim_bundle::{
-    simulation_export, simulation_export_zip, simulation_import, simulation_import_zip,
-    var_map_export, var_map_import,
-};
-use crate::service::http::var_map::{var_map_export_file, var_map_get, var_map_put};
 use crate::service::http::state::AppState;
 use crate::service::http::types::{RequestCoil, RequestRegister};
+use crate::service::http::var_map::{var_map_export_file, var_map_get, var_map_put};
 use crate::service::modbus::interfaces::IRegistry;
 use rocket::data::ByteUnit;
 use rocket::http::Status;

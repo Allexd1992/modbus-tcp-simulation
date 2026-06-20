@@ -50,7 +50,7 @@ fn migrate_scripts_dir(target: &Path) {
     };
     for entry in entries.flatten() {
         let path = entry.path();
-        if !path.extension().is_some_and(|x| x == "js") {
+        if path.extension().is_none_or(|x| x != "js") {
             continue;
         }
         let Some(name) = path.file_name() else {

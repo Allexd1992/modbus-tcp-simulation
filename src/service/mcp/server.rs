@@ -139,7 +139,10 @@ fn default_import_mode() -> String {
     "merge".to_string()
 }
 
-fn parse_var_map_bundle(version: u32, variables: Vec<serde_json::Value>) -> Result<VarMapBundle, ErrorData> {
+fn parse_var_map_bundle(
+    version: u32,
+    variables: Vec<serde_json::Value>,
+) -> Result<VarMapBundle, ErrorData> {
     let bundle = VarMapBundle {
         version,
         variables: variables
@@ -326,8 +329,8 @@ impl ModbusMcpServer {
     ) -> Result<String, ErrorData> {
         let bundle = parse_var_map_bundle(body.version, body.variables)?;
         let replace = body.mode.eq_ignore_ascii_case("replace");
-        let imported =
-            var_map::import_bundle(&self.config.var_map_path, &bundle, replace).map_err(map_io_err)?;
+        let imported = var_map::import_bundle(&self.config.var_map_path, &bundle, replace)
+            .map_err(map_io_err)?;
         reload_var_map_engine(&self.config.engine)?;
         Self::to_json(&serde_json::json!({
             "imported": imported,
@@ -441,7 +444,7 @@ impl ModbusMcpServer {
                     .unwrap_or(body.version as u64) as u32,
                 raw.get("variables")
                     .and_then(|v| v.as_array())
-                    .map(|a| a.clone())
+                    .cloned()
                     .unwrap_or_default(),
             )?)
         } else if let Some(vars) = body.variables {

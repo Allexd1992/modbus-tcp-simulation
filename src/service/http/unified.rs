@@ -10,13 +10,13 @@ use axum::{
     Router,
 };
 use hyper_util::{
-    client::legacy::connect::HttpConnector,
-    client::legacy::Client,
-    rt::TokioExecutor,
+    client::legacy::connect::HttpConnector, client::legacy::Client, rt::TokioExecutor,
 };
 use rocket::Config;
 
-use crate::service::http::{api::Api, context::get_rocket, limits::HttpLimits, state::SimScriptsState};
+use crate::service::http::{
+    api::Api, context::get_rocket, limits::HttpLimits, state::SimScriptsState,
+};
 use crate::service::mcp::{mcp_http_service, McpConfig};
 use crate::service::modbus::store::Store;
 
@@ -70,7 +70,8 @@ async fn proxy_to_rocket(
 }
 
 async fn reserve_internal_port() -> anyhow::Result<u16> {
-    let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).await?;
+    let listener =
+        tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).await?;
     Ok(listener.local_addr()?.port())
 }
 
@@ -126,9 +127,7 @@ pub async fn run_unified_web(
             sim_scripts_enabled: sim_scripts.enabled,
             engine: sim_scripts.engine.clone(),
         });
-        router = Router::new()
-            .nest_service("/mcp", mcp)
-            .merge(router);
+        router = Router::new().nest_service("/mcp", mcp).merge(router);
         tracing::info!(port = public_port, "MCP Streamable HTTP listening at /mcp");
     }
 

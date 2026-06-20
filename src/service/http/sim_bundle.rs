@@ -8,7 +8,8 @@ use rocket::{get, post, State};
 use utoipa::ToSchema;
 
 use crate::service::http::download::{map_io_err as map_download_err, Attachment};
-use crate::service::http::sim_scripts::ScriptContent;use crate::service::http::state::AppState;
+use crate::service::http::sim_scripts::ScriptContent;
+use crate::service::http::state::AppState;
 use crate::service::sim::{self, ScriptExportBundle, ScriptExportEntry};
 use crate::service::var_map::{self, VarMapBundle};
 
@@ -247,26 +248,22 @@ pub fn simulation_import(
                     })
                     .collect(),
             };
-            scripts_imported =
-                sim::import_scripts(&state.sim_scripts.dir, &bundle, replace).map_err(map_io_err)?;
+            scripts_imported = sim::import_scripts(&state.sim_scripts.dir, &bundle, replace)
+                .map_err(map_io_err)?;
         }
     }
 
-    let var_map_body = if let Some(vm) = &body.var_map {
-        Some(vm.clone())
-    } else if let Some(vars) = &body.variables {
-        Some(VarMapBundle {
+    let var_map_body = body.var_map.clone().or_else(|| {
+        body.variables.as_ref().map(|vars| VarMapBundle {
             version: 1,
             variables: vars.clone(),
         })
-    } else {
-        None
-    };
+    });
 
     if let Some(bundle) = var_map_body {
         if !bundle.variables.is_empty() {
-            var_map_imported =
-                var_map::import_bundle(&state.var_map_path, &bundle, replace).map_err(map_io_err)?;
+            var_map_imported = var_map::import_bundle(&state.var_map_path, &bundle, replace)
+                .map_err(map_io_err)?;
         }
     }
 

@@ -742,9 +742,8 @@ fn load_scripts_from_dir(ctx: &rquickjs::Ctx<'_>, dir: &Path) -> rquickjs::Resul
             name_json = name,
             wrapped = wrapped
         );
-        ctx.eval::<(), _>(load_script.as_str()).map_err(|e| {
-            rquickjs::Exception::throw_message(ctx, &format!("{name}: {e}"))
-        })?;
+        ctx.eval::<(), _>(load_script.as_str())
+            .map_err(|e| rquickjs::Exception::throw_message(ctx, &format!("{name}: {e}")))?;
         tracing::debug!(script = %name, "loaded simulation script");
     }
     Ok(())
