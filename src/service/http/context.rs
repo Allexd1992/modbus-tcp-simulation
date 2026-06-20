@@ -14,9 +14,16 @@ pub fn get_rocket(
     registry: Arc<Mutex<Store>>,
     api: Api,
     limits: HttpLimits,
+    sim_scripts: crate::service::http::state::SimScriptsState,
+    var_map_path: std::path::PathBuf,
 ) -> Rocket<Build> {
     rocket::custom(config)
-        .manage(AppState::new(Arc::clone(&registry), limits))
+        .manage(AppState::new(
+            Arc::clone(&registry),
+            limits,
+            sim_scripts,
+            var_map_path,
+        ))
         .mount(
             "/",
             SwaggerUi::new("/api/v1/swagger/<_..>")

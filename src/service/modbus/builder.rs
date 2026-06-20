@@ -14,7 +14,7 @@ pub async fn server_build(
     socket_addr: SocketAddr,
     registry: Arc<Mutex<Store>>,
 ) -> anyhow::Result<()> {
-    println!("Starting up server on {socket_addr}");
+    tracing::info!(%socket_addr, "Modbus TCP server listening");
     let listener = TcpListener::bind(socket_addr).await?;
     let server = Server::new(listener);
     let new_service =
@@ -23,7 +23,7 @@ pub async fn server_build(
         accept_tcp_connection(stream, socket_addr, new_service)
     };
     let on_process_error = |err| {
-        eprintln!("{err}");
+        tracing::warn!(error = %err, "Modbus TCP connection error");
     };
     server.serve(&on_connected, on_process_error).await?;
     Ok(())

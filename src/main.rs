@@ -1,16 +1,157 @@
 use std::env;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+
+mod logging;
 mod service;
 use crate::service::{
-    http::{api::Api, context::get_rocket, limits::HttpLimits},
-    mcp::run_mcp_http_server,
+    http::{api::Api, limits::HttpLimits, state::SimScriptsState, unified::run_unified_web},
     modbus::{builder::server_build, store::Store},
+    sim,
 };
-use rocket::Config;
+
+const DEFAULT_SCRIPTS_DIR: &str = "script";
+const DEFAULT_VAR_MAP_PATH: &str = "conf/var-map.json";
+const LEGACY_SCRIPTS_DIR: &str = "scripts";
+const LEGACY_VAR_MAP_PATH: &str = "var-map.json";
+
+fn resolve_scripts_dir() -> PathBuf {
+    match env::var("SIM_SCRIPTS_DIR") {
+        Ok(path) => PathBuf::from(path),
+        Err(_) => {
+            let dir = PathBuf::from(DEFAULT_SCRIPTS_DIR);
+            migrate_scripts_dir(&dir);
+            dir
+        }
+    }
+}
+
+fn resolve_var_map_path() -> PathBuf {
+    match env::var("VAR_MAP_PATH") {
+        Ok(path) => PathBuf::from(path),
+        Err(_) => {
+            let path = PathBuf::from(DEFAULT_VAR_MAP_PATH);
+            migrate_var_map(&path);
+            path
+        }
+    }
+}
+
+fn migrate_scripts_dir(target: &Path) {
+    if std::fs::create_dir_all(target).is_err() {
+        return;
+    }
+    let legacy = PathBuf::from(LEGACY_SCRIPTS_DIR);
+    if !legacy.is_dir() || paths_same_dir(&legacy, target) {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(&legacy) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.extension().is_some_and(|x| x == "js") {
+            continue;
+        }
+        let Some(name) = path.file_name() else {
+            continue;
+        };
+        let dest = target.join(name);
+        let copy = !dest.exists() || file_is_newer(&path, &dest);
+        if !copy {
+            continue;
+        }
+        match std::fs::copy(&path, &dest) {
+            Ok(_) => tracing::info!(
+                legacy = LEGACY_SCRIPTS_DIR,
+                file = %name.to_string_lossy(),
+                target = %target.display(),
+                "migrated script"
+            ),
+            Err(e) => tracing::warn!(
+                legacy = LEGACY_SCRIPTS_DIR,
+                file = %name.to_string_lossy(),
+                error = %e,
+                "could not copy legacy script"
+            ),
+        }
+    }
+    if remove_legacy_scripts_dir(&legacy) {
+        tracing::info!(
+            legacy = LEGACY_SCRIPTS_DIR,
+            target = DEFAULT_SCRIPTS_DIR,
+            "removed legacy scripts directory"
+        );
+    }
+}
+
+fn file_is_newer(src: &Path, dest: &Path) -> bool {
+    match (
+        src.metadata().and_then(|m| m.modified()),
+        dest.metadata().and_then(|m| m.modified()),
+    ) {
+        (Ok(src_time), Ok(dest_time)) => src_time > dest_time,
+        (Ok(_), Err(_)) => true,
+        _ => false,
+    }
+}
+
+fn remove_legacy_scripts_dir(legacy: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(legacy) else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if std::fs::remove_file(&path).is_err() {
+                return false;
+            }
+        } else if path.is_dir() {
+            return false;
+        }
+    }
+    std::fs::remove_dir(legacy).is_ok()
+}
+
+fn paths_same_dir(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
+}
+
+fn migrate_var_map(target: &Path) {
+    if target.is_file() {
+        return;
+    }
+    if let Some(parent) = target.parent() {
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
+    let legacy = PathBuf::from(LEGACY_VAR_MAP_PATH);
+    if !legacy.is_file() {
+        return;
+    }
+    match std::fs::rename(&legacy, target) {
+        Ok(()) => tracing::info!(
+            legacy = LEGACY_VAR_MAP_PATH,
+            target = %target.display(),
+            "migrated var-map"
+        ),
+        Err(e) => tracing::warn!(
+            legacy = LEGACY_VAR_MAP_PATH,
+            error = %e,
+            "could not migrate var-map"
+        ),
+    }
+}
 
 #[tokio::main]
 
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    logging::init();
+
     let registry = Arc::new(Mutex::new(Store::new()));
     let port = env::var("MB_SERVER_PORT")
         .unwrap_or_else(|_| "502".to_string())
@@ -22,44 +163,77 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "9090".to_string())
         .parse::<u16>()
         .unwrap();
-    let rocket_config = Config {
-        address: "0.0.0.0".parse()?,
-        port: web_port,
-        ..Default::default()
-    };
 
     let socket_addr = addr.parse().unwrap();
 
-    // MCP Streamable HTTP: port from MCP_SERVER_PORT (default 8081). Set to "0" to disable.
-    let mcp_port: u16 = env::var("MCP_SERVER_PORT")
-        .unwrap_or_else(|_| "8081".to_string())
+    // MCP Streamable HTTP at /mcp on the web port. Set MCP_SERVER_PORT=0 to disable.
+    let mcp_enabled = env::var("MCP_SERVER_PORT")
+        .unwrap_or_else(|_| "1".to_string())
         .parse::<u16>()
-        .unwrap_or_else(|_| {
-            eprintln!("warning: invalid MCP_SERVER_PORT, using 8081");
-            8081
-        });
-
-    if mcp_port != 0 {
-        eprintln!("MCP_SERVER_PORT={mcp_port} (Streamable HTTP at /mcp on this port; set MCP_SERVER_PORT=0 to disable)");
-        let store = Arc::clone(&registry);
-        tokio::spawn(async move {
-            if let Err(e) = run_mcp_http_server(store, mcp_port).await {
-                eprintln!("MCP HTTP server error: {e}");
-            }
-        });
+        .unwrap_or(1)
+        != 0;
+    if mcp_enabled {
+        tracing::info!("MCP enabled at /mcp on WEB_SERVER_PORT (set MCP_SERVER_PORT=0 to disable)");
     } else {
-        eprintln!("MCP disabled (MCP_SERVER_PORT=0)");
+        tracing::info!("MCP disabled (MCP_SERVER_PORT=0)");
     }
 
     let limits = HttpLimits::from_env();
-    eprintln!(
-        "HTTP Modbus limits: MB_MAX_ADDRESS={} MB_MAX_READ_COUNT={}",
-        limits.max_modbus_address, limits.max_read_count
+    tracing::info!(
+        max_address = limits.max_modbus_address,
+        max_read_count = limits.max_read_count,
+        "HTTP Modbus limits"
     );
+
+    let sim_disabled = env::var("SIM_SCRIPTS_DISABLE")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    let scripts_dir = resolve_scripts_dir();
+    let var_map_path = resolve_var_map_path();
+    tracing::info!(dir = %scripts_dir.display(), "scripts directory");
+    tracing::info!(path = %var_map_path.display(), "var-map path");
+
+    let sim_engine = if sim_disabled {
+        tracing::info!("simulation scripts disabled (SIM_SCRIPTS_DISABLE)");
+        None
+    } else {
+        match sim::spawn(
+            Arc::clone(&registry),
+            scripts_dir.clone(),
+            var_map_path.clone(),
+        ) {
+            Ok(handle) => {
+                tracing::info!("simulation script engine started");
+                Some(handle)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "simulation scripts failed to start");
+                None
+            }
+        }
+    };
+
+    let sim_scripts_state = SimScriptsState {
+        enabled: !sim_disabled && sim_engine.is_some(),
+        dir: scripts_dir,
+        engine: sim_engine,
+    };
 
     tokio::select! {
         _ = server_build(socket_addr,Arc::clone(&registry)) => unreachable!(),
-        _ = get_rocket(rocket_config,Arc::clone(&registry),Api::new(), limits).launch()=>{},
+        r = run_unified_web(
+            web_port,
+            Arc::clone(&registry),
+            Api::new(),
+            limits,
+            sim_scripts_state,
+            var_map_path,
+            mcp_enabled,
+        ) => {
+            if let Err(e) = r {
+                tracing::error!(error = %e, "web server exited with error");
+            }
+        },
     }
 
     Ok(())

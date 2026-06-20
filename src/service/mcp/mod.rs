@@ -1,3 +1,6 @@
+mod config;
+mod ops;
 mod server;
 
-pub use server::run_mcp_http_server;
+pub use config::McpConfig;
+pub use server::mcp_http_service;

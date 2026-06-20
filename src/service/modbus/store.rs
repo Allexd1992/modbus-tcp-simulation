@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use super::hooks::{RegisterKind, WriteEvent, WriteHook, WriteValues};
 use super::interfaces::IRegistry;
 
 pub struct Store {
@@ -10,6 +11,7 @@ pub struct Store {
     holding_registers: Arc<Mutex<HashMap<u16, u16>>>,
     discrete_coils: Arc<Mutex<HashMap<u16, bool>>>,
     discrete_input: Arc<Mutex<HashMap<u16, bool>>>,
+    write_hook: Option<WriteHook>,
 }
 
 impl Store {
@@ -35,6 +37,17 @@ impl Store {
             holding_registers: Arc::new(Mutex::new(holding_registers)),
             discrete_coils: Arc::new(Mutex::new(coils)),
             discrete_input: Arc::new(Mutex::new(discrete_input)),
+            write_hook: None,
+        }
+    }
+
+    pub fn set_write_hook(&mut self, hook: WriteHook) {
+        self.write_hook = Some(hook);
+    }
+
+    fn notify_write(&self, kind: RegisterKind, addr: u16, values: WriteValues) {
+        if let Some(hook) = &self.write_hook {
+            hook(WriteEvent { kind, addr, values });
         }
     }
 }
@@ -62,21 +75,33 @@ impl IRegistry for Store {
 
     fn holding_registers_write(&mut self, addr: u16, values: &[u16]) -> Result<(), std::io::Error> {
         registers_write(Arc::clone(&self.holding_registers), addr, values)?;
+        self.notify_write(
+            RegisterKind::Holding,
+            addr,
+            WriteValues::U16(values.to_vec()),
+        );
         Ok(())
     }
 
     fn input_registers_write(&mut self, addr: u16, values: &[u16]) -> Result<(), std::io::Error> {
         registers_write(Arc::clone(&self.input_registers), addr, values)?;
+        self.notify_write(RegisterKind::Input, addr, WriteValues::U16(values.to_vec()));
         Ok(())
     }
 
     fn discrete_coil_write(&mut self, addr: u16, values: &[bool]) -> Result<(), std::io::Error> {
         coils_write(Arc::clone(&self.discrete_coils), addr, values)?;
+        self.notify_write(RegisterKind::Coil, addr, WriteValues::Bool(values.to_vec()));
         Ok(())
     }
 
     fn discrete_input_write(&mut self, addr: u16, values: &[bool]) -> Result<(), std::io::Error> {
         coils_write(Arc::clone(&self.discrete_input), addr, values)?;
+        self.notify_write(
+            RegisterKind::DiscreteInput,
+            addr,
+            WriteValues::Bool(values.to_vec()),
+        );
         Ok(())
     }
 }
@@ -94,7 +119,7 @@ fn registers_read(
             response_values[i as usize] = *r;
         } else {
             // TODO: Return a Modbus Exception response `IllegalDataAddress` https://github.com/slowtec/tokio-modbus/issues/165
-            println!("SERVER: Exception::IllegalDataAddress");
+            tracing::debug!(reg_addr, "Modbus illegal data address on register read");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::AddrNotAvailable,
                 format!("no register at address {reg_addr}"),
@@ -117,7 +142,7 @@ fn coils_read(
             response_values[i as usize] = *r;
         } else {
             // TODO: Return a Modbus Exception response `IllegalDataAddress` https://github.com/slowtec/tokio-modbus/issues/165
-            println!("SERVER: Exception::IllegalDataAddress");
+            tracing::debug!(coil_addr, "Modbus illegal data address on coil read");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::AddrNotAvailable,
                 format!("no register at address {coil_addr}"),
@@ -141,7 +166,7 @@ fn registers_write(
             *r = *value;
         } else {
             // TODO: Return a Modbus Exception response `IllegalDataAddress` https://github.com/slowtec/tokio-modbus/issues/165
-            println!("SERVER: Exception::IllegalDataAddress");
+            tracing::debug!(reg_addr, "Modbus illegal data address on register write");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::AddrNotAvailable,
                 format!("no register at address {reg_addr}"),
@@ -163,7 +188,7 @@ fn coils_write(
             *r = *value;
         } else {
             // TODO: Return a Modbus Exception response `IllegalDataAddress` https://github.com/slowtec/tokio-modbus/issues/165
-            println!("SERVER: Exception::IllegalDataAddress");
+            tracing::debug!(reg_addr, "Modbus illegal data address on coil write");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::AddrNotAvailable,
                 format!("no register at address {reg_addr}"),

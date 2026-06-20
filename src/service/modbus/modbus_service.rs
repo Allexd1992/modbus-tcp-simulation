@@ -81,7 +81,7 @@ impl tokio_modbus::server::Service for ModbusService {
                 Response::WriteSingleCoil(addr, value),
             ),
             _ => {
-                eprintln!("SERVER: IllegalFunction — unimplemented request: {req:?}");
+                tracing::warn!(?req, "Modbus illegal function — unimplemented request");
                 future::ready(Err(io::Error::new(
                     ErrorKind::Unsupported,
                     "Unimplemented function code",

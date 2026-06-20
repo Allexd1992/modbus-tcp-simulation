@@ -228,7 +228,10 @@
   }
 
   function formatFloatCell(f) {
-    return Number.isFinite(f) ? String(f) : "";
+    if (Number.isNaN(f)) return "NaN";
+    if (f === Infinity) return "Infinity";
+    if (f === -Infinity) return "-Infinity";
+    return f.toFixed(4);
   }
 
   function updateAreaHint() {
@@ -374,6 +377,7 @@
   }
 
   async function doRead(silent) {
+    if (window.APCS_PANELS && !window.APCS_PANELS.isRegistersView()) return;
     if (silent && isGridInputFocused()) {
       return;
     }
@@ -460,6 +464,7 @@
   function startPolling() {
     stopPolling();
     if (!isPollEnabled()) return;
+    if (window.APCS_PANELS && !window.APCS_PANELS.isRegistersView()) return;
     pollTimer = setInterval(pollTick, pollIntervalMs());
   }
 
@@ -1030,29 +1035,22 @@
     });
   }
 
-  /** Порт MCP на стороне браузера: ?mcpPort=8081 или по умолчанию 18081 (Docker 18081:8081). */
-  function getMcpPublicPort() {
-    try {
-      const q = new URLSearchParams(window.location.search).get("mcpPort");
-      if (q !== null && /^\d{1,5}$/.test(q)) {
-        const n = Number(q);
-        if (n >= 0 && n <= 65535) return String(n);
-      }
-    } catch (e) {
-      /* ignore */
+  function getMcpUrlForConfig() {
+    const loc = window.location;
+    if (loc.origin && loc.origin !== "null") {
+      return loc.origin.replace(/\/$/, "") + "/mcp";
     }
-    return "18081";
+    const host = loc.hostname && loc.hostname.length ? loc.hostname : "127.0.0.1";
+    return "http://" + host + ":" + (loc.port || "9090") + "/mcp";
+  }
+
+  function getMcpPublicPort() {
+    return window.location.port || (window.location.protocol === "https:" ? "443" : "80");
   }
 
   function getMcpPublicHost() {
     const h = window.location.hostname;
     return h && h.length > 0 ? h : "127.0.0.1";
-  }
-
-  function getMcpUrlForConfig() {
-    return (
-      "http://" + getMcpPublicHost() + ":" + getMcpPublicPort() + "/mcp"
-    );
   }
 
   function formatMcpJsonExample() {
@@ -1196,6 +1194,41 @@
       window.visualViewport.addEventListener("resize", scheduleMcpPanelPosition);
       window.visualViewport.addEventListener("scroll", scheduleMcpPanelPosition);
     }
+  }
+
+  window.APCS_APP = {
+    readPath: readPath,
+    writeOnePath: writeOnePath,
+    batchPath: batchPath,
+    combineU32: combineU32,
+    u32ToInt32: u32ToInt32,
+    u32ToFloat32: u32ToFloat32,
+    u32ToRegs: u32ToRegs,
+    float32ToRegs: float32ToRegs,
+    float64ToRegs: float64ToRegs,
+    parseFloatLocale: parseFloatLocale,
+    regsToFloat64: regsToFloat64,
+    isBoolKind: isBoolKind,
+    getMaxModbusAddress: function () {
+      return maxModbusAddress;
+    },
+    pollIntervalMs: pollIntervalMs,
+    onViewChange: null,
+  };
+
+  if (window.APCS_PANELS) {
+    window.APCS_APP.onViewChange = function (view) {
+      if (view === "registers") {
+        updateAreaHint();
+        if (isPollEnabled()) startPolling();
+      } else {
+        stopPolling();
+      }
+      if (view === "variables" && window.APCS_VAR_MAP) {
+        window.APCS_VAR_MAP.restartPolling();
+      }
+    };
+    window.APCS_PANELS.init();
   }
 
   window.addEventListener("apcs-lang-change", function () {

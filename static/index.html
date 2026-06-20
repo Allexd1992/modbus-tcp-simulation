@@ -46,6 +46,44 @@
 <body>
   <div class="mfc-window">
     <header class="mfc-titlebar">
+      <nav
+        class="mfc-main-nav"
+        role="tablist"
+        data-i18n-attr="aria-label:nav.mainAria"
+        aria-label="Main view"
+      >
+        <button
+          type="button"
+          class="mfc-nav-tab active"
+          data-view="registers"
+          id="navModbus"
+          role="tab"
+          aria-selected="true"
+        >
+          <span data-i18n="nav.modbus">Modbus</span>
+        </button>
+        <button
+          type="button"
+          class="mfc-nav-tab"
+          data-view="variables"
+          id="navVariables"
+          role="tab"
+          aria-selected="false"
+        >
+          <span data-i18n="nav.variables">Address map</span>
+        </button>
+        <button
+          type="button"
+          class="mfc-nav-tab"
+          data-view="scripts"
+          id="navScripts"
+          role="tab"
+          aria-selected="false"
+          hidden
+        >
+          <span data-i18n="nav.scripts">Simulation rules</span>
+        </button>
+      </nav>
       <span class="mfc-title" data-i18n="app.title">Modbus TCP Server Simulation</span>
       <div class="mfc-title-actions">
         <div
@@ -119,7 +157,8 @@
       </div>
     </header>
 
-    <div class="mfc-tabs" role="tablist" data-i18n-attr="aria-label:tabs.aria" aria-label="Modbus table">
+    <div id="modbusPanel" class="modbus-panel">
+    <div class="mfc-tabs" id="modbusTabs" role="tablist" data-i18n-attr="aria-label:tabs.aria" aria-label="Modbus table">
       <button type="button" class="mfc-tab active" data-kind="holding" role="tab" aria-selected="true" title="FC 03/16">
         <span class="tab-num">4x</span> <span data-i18n="tab.holding">Holding registers</span>
       </button>
@@ -195,13 +234,99 @@
       </div>
     </div>
 
-    <div class="mfc-grid-wrap">
+    <div class="mfc-grid-wrap" id="modbusGridWrap">
       <table id="grid" class="mfc-matrix" data-i18n-attr="aria-label:grid.aria" aria-label="">
         <thead id="gridHead">
           <tr id="matrixHeaderRow"></tr>
         </thead>
         <tbody id="gridBody"></tbody>
       </table>
+    </div>
+    </div>
+
+    <div id="scriptsPanel" class="scripts-panel" hidden>
+      <div class="scripts-toolbar">
+        <button type="button" id="scriptReload" class="mfc-btn" data-i18n="scripts.reload">Reload engine</button>
+        <button type="button" id="scriptNew" class="mfc-btn" data-i18n="scripts.new">New</button>
+        <button type="button" id="scriptSave" class="mfc-btn mfc-btn-default" data-i18n="scripts.save">Save</button>
+        <button type="button" id="scriptDelete" class="mfc-btn" data-i18n="scripts.delete">Delete</button>
+        <button type="button" id="scriptExport" class="mfc-btn" data-i18n="scripts.export">Export</button>
+        <button type="button" id="scriptImport" class="mfc-btn" data-i18n="scripts.import">Import</button>
+        <button type="button" id="simExport" class="mfc-btn" data-i18n="sim.export">Export all</button>
+        <button type="button" id="simImport" class="mfc-btn" data-i18n="sim.import">Import all</button>
+        <input type="file" id="scriptImportFile" class="visually-hidden" accept=".js,.zip,.json,application/javascript,application/zip,application/json" />
+        <input type="file" id="simImportFile" class="visually-hidden" accept=".zip,.json,application/zip,application/json" />
+        <label class="script-name-wrap" for="scriptNameInput">
+          <span class="script-name-label" data-i18n="scripts.fileName">File</span>
+          <input
+            type="text"
+            id="scriptNameInput"
+            class="script-name-inp"
+            spellcheck="false"
+            autocomplete="off"
+            data-i18n-attr="placeholder:scripts.namePlaceholder"
+          />
+        </label>
+        <span id="scriptSyntaxError" class="script-syntax-error" hidden></span>
+      </div>
+      <div class="scripts-body">
+        <aside class="script-list-wrap" aria-labelledby="scriptListHeading">
+          <h2 id="scriptListHeading" class="script-list-heading" data-i18n="scripts.files">Files</h2>
+          <ul id="scriptList" class="script-list"></ul>
+        </aside>
+        <textarea
+          id="scriptEditor"
+          class="script-editor"
+          spellcheck="false"
+          wrap="off"
+          data-i18n-attr="aria-label:scripts.editorAria"
+          aria-label="Script source"
+        ></textarea>
+      </div>
+      <p id="scriptsDisabledMsg" class="scripts-disabled" hidden data-i18n="scripts.disabled"></p>
+    </div>
+
+    <div id="variablesPanel" class="variables-panel" hidden>
+      <div class="variables-toolbar">
+        <button type="button" id="varMapAdd" class="mfc-btn mfc-btn-default" data-i18n="varmap.add">Add entry</button>
+        <button type="button" id="varMapRefresh" class="mfc-btn" data-i18n="varmap.refresh">Refresh</button>
+        <button type="button" id="varMapExport" class="mfc-btn" data-i18n="varmap.export">Export</button>
+        <button type="button" id="varMapImport" class="mfc-btn" data-i18n="varmap.import">Import</button>
+        <input type="file" id="varMapImportFile" class="visually-hidden" accept=".json,application/json" />
+        <label class="tb-poll-label" data-i18n-attr="title:poll.title" title="">
+          <input type="checkbox" id="varMapPollEnabled" checked />
+          <span data-i18n="label.auto">Auto</span>
+        </label>
+        <span id="varMapStatus" class="variables-status"></span>
+      </div>
+      <div class="variables-grid-wrap">
+        <table class="variables-table" id="varMapTable" data-i18n-attr="aria-label:varmap.tableAria" aria-label="">
+          <colgroup>
+            <col class="varmap-col-name" />
+            <col class="varmap-col-kind" />
+            <col class="varmap-col-addr" />
+            <col class="varmap-col-type" />
+            <col class="varmap-col-bit" />
+            <col class="varmap-col-order" />
+            <col class="varmap-col-value" />
+            <col class="varmap-col-actions" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th data-i18n="varmap.col.name">Name</th>
+              <th data-i18n="varmap.col.kind">Area</th>
+              <th data-i18n="varmap.col.addr">Address</th>
+              <th data-i18n="varmap.col.type">Type</th>
+              <th class="varmap-col-bit" data-i18n="varmap.col.bit">Bit</th>
+              <th class="varmap-col-order" data-i18n="varmap.col.order">Order</th>
+              <th class="varmap-col-value" data-i18n="varmap.col.value">Value</th>
+              <th class="varmap-col-actions"><span class="visually-hidden" data-i18n="varmap.col.actions">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="varMapBody"></tbody>
+        </table>
+        <p id="varMapEmpty" class="variables-empty" hidden data-i18n="varmap.empty">Address map is empty — click Add entry.</p>
+      </div>
     </div>
 
     <footer class="mfc-statusbar">
@@ -212,6 +337,10 @@
   </div>
 
   <script src="/ui/i18n.js"></script>
+  <script src="/ui/file-save.js"></script>
+  <script src="/ui/script-highlight.js"></script>
+  <script src="/ui/var-map.js"></script>
+  <script src="/ui/panels.js"></script>
   <script src="/ui/app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {

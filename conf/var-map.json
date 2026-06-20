@@ -1,0 +1,194 @@
+{
+  "version": 1,
+  "variables": [
+    {
+      "id": "vmrt001",
+      "name": "routeTrigger01",
+      "kind": "holding",
+      "addr": 0,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrt002",
+      "name": "routeTrigger02",
+      "kind": "holding",
+      "addr": 1,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrt003",
+      "name": "routeTrigger03",
+      "kind": "holding",
+      "addr": 2,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrt004",
+      "name": "routeTrigger04",
+      "kind": "holding",
+      "addr": 3,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrt005",
+      "name": "routeTrigger05",
+      "kind": "holding",
+      "addr": 4,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrs001",
+      "name": "routeStatus01",
+      "kind": "holding",
+      "addr": 5,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrs002",
+      "name": "routeStatus02",
+      "kind": "holding",
+      "addr": 6,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrs003",
+      "name": "routeStatus03",
+      "kind": "holding",
+      "addr": 7,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrs004",
+      "name": "routeStatus04",
+      "kind": "holding",
+      "addr": 8,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmrs005",
+      "name": "routeStatus05",
+      "kind": "holding",
+      "addr": 9,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgs001",
+      "name": "gateStatus01",
+      "kind": "holding",
+      "addr": 10,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgs002",
+      "name": "gateStatus02",
+      "kind": "holding",
+      "addr": 11,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgs003",
+      "name": "gateStatus03",
+      "kind": "holding",
+      "addr": 12,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgs004",
+      "name": "gateStatus04",
+      "kind": "holding",
+      "addr": 13,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgs005",
+      "name": "gateStatus05",
+      "kind": "holding",
+      "addr": 14,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgc001",
+      "name": "gateCMD01",
+      "kind": "holding",
+      "addr": 15,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgc002",
+      "name": "gateCMD02",
+      "kind": "holding",
+      "addr": 16,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgc003",
+      "name": "gateCMD03",
+      "kind": "holding",
+      "addr": 17,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgc004",
+      "name": "gateCMD04",
+      "kind": "holding",
+      "addr": 18,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmgc005",
+      "name": "gateCMD05",
+      "kind": "holding",
+      "addr": 19,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    },
+    {
+      "id": "vmbp001",
+      "name": "beeper01",
+      "kind": "holding",
+      "addr": 20,
+      "type": "uint16",
+      "bit": 0,
+      "order": "HL"
+    }
+  ]
+}

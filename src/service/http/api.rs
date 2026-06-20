@@ -1,3 +1,13 @@
+use crate::service::http::sim_scripts::{
+    sim_scripts_create, sim_scripts_delete, sim_scripts_download, sim_scripts_export,
+    sim_scripts_export_zip, sim_scripts_get, sim_scripts_import, sim_scripts_import_zip,
+    sim_scripts_list, sim_scripts_put, sim_scripts_reload,
+};
+use crate::service::http::sim_bundle::{
+    simulation_export, simulation_export_zip, simulation_import, simulation_import_zip,
+    var_map_export, var_map_import,
+};
+use crate::service::http::var_map::{var_map_export_file, var_map_get, var_map_put};
 use crate::service::http::state::AppState;
 use crate::service::http::types::{RequestCoil, RequestRegister};
 use crate::service::modbus::interfaces::IRegistry;
@@ -14,6 +24,7 @@ use utoipa::ToSchema;
 pub struct UiConfig {
     pub max_modbus_address: u16,
     pub max_read_count: u16,
+    pub sim_scripts_enabled: bool,
 }
 
 /// Лимиты для UI и клиентов (синхронно с `MB_MAX_ADDRESS`, `MB_MAX_READ_COUNT`).
@@ -26,6 +37,7 @@ pub fn ui_config(state: &State<AppState>) -> Json<UiConfig> {
     Json(UiConfig {
         max_modbus_address: state.limits.max_modbus_address,
         max_read_count: state.limits.max_read_count,
+        sim_scripts_enabled: state.sim_scripts.enabled,
     })
 }
 
@@ -392,7 +404,27 @@ impl Api {
             holding_registers_write,
             input_registers_write,
             discrete_coils_write,
-            discrete_inputs_write
+            discrete_inputs_write,
+            sim_scripts_list,
+            sim_scripts_get,
+            sim_scripts_download,
+            sim_scripts_put,
+            sim_scripts_create,
+            sim_scripts_delete,
+            sim_scripts_reload,
+            sim_scripts_export,
+            sim_scripts_export_zip,
+            sim_scripts_import,
+            sim_scripts_import_zip,
+            var_map_get,
+            var_map_put,
+            var_map_export_file,
+            var_map_export,
+            var_map_import,
+            simulation_export,
+            simulation_export_zip,
+            simulation_import,
+            simulation_import_zip,
         ];
         Self { list }
     }
